@@ -90,6 +90,7 @@
     const db = firebase.database();
 
     db.ref().child('.info/connected').on('value', () => { syncOfflineResults(); });
+
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
 
     window.onload = () => {
@@ -177,7 +178,6 @@
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
                 const shortTime = now.getHours() + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
-                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -186,9 +186,8 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
-                    submitTime: shortTime // সময় সংক্ষেপে (যেমন: ১০:৩০)
+                    submitTime: shortTime 
                 };
-
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! রেজাল্ট জমা হচ্ছে...");
@@ -229,9 +228,12 @@
     }
 
     function logout() {
-        if(confirm("লগআউট করতে চান?")) {
+        const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
+        if (pass === "pm5522") {
             localStorage.removeItem('loggedUser');
             location.reload();
+        } else if (pass !== null) {
+            alert("ভুল পাসওয়ার্ড!");
         }
     }
 </script>
