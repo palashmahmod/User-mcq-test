@@ -78,26 +78,18 @@
 </div>
 
 <script>
-    // আপনার দেওয়া নতুন GitHub তথ্য
     const GITHUB_USER = "palashmahmod";
     const GITHUB_REPO = "quiz-files";
-
-    // আপনার দেওয়া নতুন Firebase কনফিগারেশন
     const firebaseConfig = {
         apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco", 
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
 
-    db.ref().child('.info/connected').on('value', () => {
-        syncOfflineResults(); 
-    });
-
+    db.ref().child('.info/connected').on('value', () => { syncOfflineResults(); });
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
 
     window.onload = () => {
@@ -112,9 +104,7 @@
         const sec = document.getElementById('uSection').value.trim();
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
-
         if(!name || !cls || !sec || !roll || !id) return alert("সবগুলো বক্স পূরণ করুন।");
-
         currentUser = { name, cls, sec, roll, id };
         localStorage.setItem('loggedUser', JSON.stringify(currentUser));
         showDashboard();
@@ -134,15 +124,12 @@
     function fetchAssignedQuizzes() {
         const quizListDiv = document.getElementById('quizList');
         const noQuizDiv = document.getElementById('noQuiz');
-
         db.ref('quiz_control').on('value', (snapshot) => {
             const allQuizzes = snapshot.val();
             quizListDiv.innerHTML = '';
             let foundAny = false;
-
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
-                    // চেক করছে এডমিন প্যানেল থেকে এই ইউজারের আইডি অন করা আছে কি না
                     if (allQuizzes[quizName][currentUser.id] === true) {
                         foundAny = true;
                         createQuizCard(quizName);
@@ -167,25 +154,19 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
-
         try {
-            // Cache Busting যুক্ত GitHub Raw URL (যাতে নতুন আপডেট সাথে সাথে আসে)
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
-            
             const response = await fetch(fileUrl, { cache: "no-store" });
             if (!response.ok) throw new Error();
-
             const htmlContent = await response.text();
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
-
             setupMessageListener(quizName);
             window.open(blobUrl, '_blank');
-
             btn.innerText = 'পরীক্ষা শুরু করুন';
             btn.disabled = false;
         } catch (error) {
-            alert("ফাইল পাওয়া যায়নি বা ইন্টারনেট সংযোগ বিচ্ছিন্ন।");
+            alert("ফাইল পাওয়া যায়নি বা ইন্টারনেট সংযোগ বিচ্ছিন্ন।");
             btn.innerText = 'পরীক্ষা শুরু করুন';
             btn.disabled = false;
         }
@@ -194,6 +175,9 @@
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
             if (e.data.type === 'QUIZ_SUBMITTED') {
+                const now = new Date();
+                const shortTime = now.getHours() + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -202,11 +186,12 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
-                    submitTime: new Date().toLocaleString()
+                    submitTime: shortTime // সময় সংক্ষেপে (যেমন: ১০:৩০)
                 };
+
                 saveResultLocally(fullResult);
                 syncOfflineResults();
-                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! রেজাল্ট জমা হচ্ছে...");
+                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! রেজাল্ট জমা হচ্ছে...");
             }
         };
     }
@@ -219,16 +204,11 @@
 
     function syncOfflineResults() {
         if (!navigator.onLine) return;
-
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
-
         queue.forEach((res, index) => {
-            // রেজাল্ট সরাসরি Firebase এর quiz_results ফোল্ডারে জমা হবে
             db.ref('quiz_results').push(res).then(() => {
-                // রেজাল্ট জমা হলে ওই ইউজারের জন্য কুইজটি অফ করে দেয়া হবে
                 db.ref(`quiz_control/${res.quizName}/${res.id}`).set(false);
-                
                 queue.splice(index, 1);
                 localStorage.setItem('pendingResults', JSON.stringify(queue));
             }).catch(e => console.log("Sync Error:", e));
