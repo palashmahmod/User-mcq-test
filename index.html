@@ -161,14 +161,11 @@
             if (!response.ok) throw new Error();
             const htmlContent = await response.text();
             
-            // অ্যান্ড্রয়েড অ্যাপের জন্য সরাসরি বর্তমান পেজে কুইজটি ওপেন করা
             document.open();
             document.write(htmlContent);
             document.close();
             
-            // লিসেনার সেট করা যাতে কুইজ পেজ থেকে সাবমিট কাজ করে
             setupMessageListener(quizName);
-
         } catch (error) {
             alert("ফাইল পাওয়া যায়নি বা ইন্টারনেট সংযোগ বিচ্ছিন্ন।");
             btn.innerText = 'পরীক্ষা শুরু করুন';
@@ -193,12 +190,28 @@
                     quizName: quizName,
                     submitTime: shortDate + ", " + shortTime
                 };
+
                 saveResultLocally(fullResult);
                 syncOfflineResults();
-                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! রেজাল্ট জমা হচ্ছে...");
                 
-                // ড্যাশবোর্ডে ফিরে আসার জন্য পেজ রিলোড করা
-                location.reload();
+                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! ফলাফল দেখা শেষ হলে ড্যাশবোর্ডে ফিরুন।");
+
+                // ফলাফল পেজে 'ড্যাশবোর্ডে ফিরুন' বাটন যোগ করা
+                const backBtn = document.createElement('button');
+                backBtn.innerHTML = '⬅ ড্যাশবোর্ডে ফিরুন';
+                backBtn.style = "position:fixed; top:10px; left:10px; z-index:99999; padding:12px 20px; background:#e74c3c; color:white; border:none; border-radius:30px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer;";
+                backBtn.onclick = function() { location.reload(); };
+                document.body.appendChild(backBtn);
+
+                // মোবাইল ব্যাক বাটন সাপোর্ট
+                window.history.pushState(null, null, window.location.href);
+                window.onpopstate = function() {
+                    if(confirm("আপনি কি ড্যাশবোর্ডে ফিরে যেতে চান?")) {
+                        location.reload();
+                    } else {
+                        window.history.pushState(null, null, window.location.href);
+                    }
+                };
             }
         };
     }
