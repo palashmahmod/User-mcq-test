@@ -156,8 +156,14 @@
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
         try {
-            const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
-            const response = await fetch(fileUrl, { cache: "no-store" });
+            // ক্যাশ সমস্যা এড়াতে ইউনিক টাইমস্ট্যাম্প যোগ করা হয়েছে
+            const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?nocache=${new Date().getTime()}`;
+            
+            const response = await fetch(fileUrl, { 
+                cache: "no-store",
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
+
             if (!response.ok) throw new Error();
             const htmlContent = await response.text();
             
@@ -196,14 +202,12 @@
                 
                 alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! ফলাফল দেখা শেষ হলে ড্যাশবোর্ডে ফিরুন।");
 
-                // ফলাফল পেজে 'ড্যাশবোর্ডে ফিরুন' বাটন যোগ করা
                 const backBtn = document.createElement('button');
                 backBtn.innerHTML = '⬅ ড্যাশবোর্ডে ফিরুন';
                 backBtn.style = "position:fixed; top:10px; left:10px; z-index:99999; padding:12px 20px; background:#e74c3c; color:white; border:none; border-radius:30px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer;";
                 backBtn.onclick = function() { location.reload(); };
                 document.body.appendChild(backBtn);
 
-                // মোবাইল ব্যাক বাটন সাপোর্ট
                 window.history.pushState(null, null, window.location.href);
                 window.onpopstate = function() {
                     if(confirm("আপনি কি ড্যাশবোর্ডে ফিরে যেতে চান?")) {
