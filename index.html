@@ -160,12 +160,15 @@
             const response = await fetch(fileUrl, { cache: "no-store" });
             if (!response.ok) throw new Error();
             const htmlContent = await response.text();
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const blobUrl = URL.createObjectURL(blob);
+            
+            // অ্যান্ড্রয়েড অ্যাপের জন্য সরাসরি বর্তমান পেজে কুইজটি ওপেন করা
+            document.open();
+            document.write(htmlContent);
+            document.close();
+            
+            // লিসেনার সেট করা যাতে কুইজ পেজ থেকে সাবমিট কাজ করে
             setupMessageListener(quizName);
-            window.open(blobUrl, '_blank');
-            btn.innerText = 'পরীক্ষা শুরু করুন';
-            btn.disabled = false;
+
         } catch (error) {
             alert("ফাইল পাওয়া যায়নি বা ইন্টারনেট সংযোগ বিচ্ছিন্ন।");
             btn.innerText = 'পরীক্ষা শুরু করুন';
@@ -177,7 +180,9 @@
         window.onmessage = function(e) {
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
+                const shortDate = now.toLocaleDateString();
                 const shortTime = now.getHours() + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -186,11 +191,14 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
-                    submitTime: shortTime 
+                    submitTime: shortDate + ", " + shortTime
                 };
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! রেজাল্ট জমা হচ্ছে...");
+                
+                // ড্যাশবোর্ডে ফিরে আসার জন্য পেজ রিলোড করা
+                location.reload();
             }
         };
     }
@@ -228,12 +236,12 @@
     }
 
     function logout() {
-        const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
+        const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
         if (pass === "pm5522") {
             localStorage.removeItem('loggedUser');
             location.reload();
         } else if (pass !== null) {
-            alert("ভুল পাসওয়ার্ড!");
+            alert("ভুল পাসওয়ার্ড!");
         }
     }
 </script>
