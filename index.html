@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
     <title>শিক্ষার্থী ড্যাশবোর্ড - স্মার্ট কুইজ</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         :root { --primary: #2c3e50; --accent: #3498db; --bg: #f0f2f5; --success: #27ae60; --white: #ffffff; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; overflow-x: hidden; }
         .card { width: 90%; max-width: 450px; background: var(--white); padding: 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
         .header-profile { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; text-align: left; }
         .profile-pic { width: 80px; height: 106px; border: 1px solid #000; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
@@ -31,6 +27,10 @@
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 10px; }
         .online { background: #e8f5e9; color: var(--success); }
         .offline { background: #ffebee; color: #e74c3c; }
+        
+        #quiz-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 10000; }
+        #quiz-iframe { width: 100%; height: 100%; border: none; }
+        
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -38,45 +38,51 @@
 
 <body>
 
-<div id="login-section" class="card">
-    <div class="header-profile">
-        <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
-        <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
-    </div>
-    <hr class="divider">
-    <h2 style="color: var(--primary); margin-top: 0;">শিক্ষার্থী প্রবেশদ্বার</h2>
-    <input type="text" id="uName" placeholder="সম্পূর্ণ নাম">
-    <div style="display: flex; gap: 10px;">
-        <input type="text" id="uClass" placeholder="শ্রেণি">
-        <input type="text" id="uSection" placeholder="শাখা">
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <input type="number" id="uRoll" placeholder="রোল নং">
-        <input type="number" id="uID" placeholder="আইডি নং">
-    </div>
-    <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
-    <button class="btn" onclick="login()">প্রবেশ করুন</button>
+<div id="quiz-container">
+    <iframe id="quiz-iframe"></iframe>
 </div>
 
-<div id="dashboard" class="card">
-    <div class="header-profile">
-        <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
-        <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
-    </div>
-    <hr class="divider">
-    <div class="profile-header">
-        <h3 id="welcomeMsg">প্রোফাইল</h3>
-        <div class="info-grid">
-            <div class="info-item"><b>আইডি নং</b> <span id="dispID"></span></div>
-            <div class="info-item"><b>শ্রেণি</b> <span id="dispClass"></span></div>
-            <div class="info-item"><b>শাখা</b> <span id="dispSection"></span></div>
-            <div class="info-item"><b>রোল</b> <span id="dispRoll"></span></div>
+<div id="main-content">
+    <div id="login-section" class="card">
+        <div class="header-profile">
+            <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
+            <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
         </div>
+        <hr class="divider">
+        <h2 style="color: var(--primary); margin-top: 0;">শিক্ষার্থী প্রবেশদ্বার</h2>
+        <input type="text" id="uName" placeholder="সম্পূর্ণ নাম">
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="uClass" placeholder="শ্রেণি">
+            <input type="text" id="uSection" placeholder="শাখা">
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <input type="number" id="uRoll" placeholder="রোল নং">
+            <input type="number" id="uID" placeholder="আইডি নং">
+        </div>
+        <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
+        <button class="btn" onclick="login()">প্রবেশ করুন</button>
     </div>
-    <div id="netStatus"></div>
-    <div id="quizList"></div>
-    <div id="noQuiz" style="margin-top:30px; color:#95a5a6; border:2px dashed #ddd; padding:20px; border-radius:15px; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
-    <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:30px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
+
+    <div id="dashboard" class="card">
+        <div class="header-profile">
+            <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
+            <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
+        </div>
+        <hr class="divider">
+        <div class="profile-header">
+            <h3 id="welcomeMsg">প্রোফাইল</h3>
+            <div class="info-grid">
+                <div class="info-item"><b>আইডি নং</b> <span id="dispID"></span></div>
+                <div class="info-item"><b>শ্রেণি</b> <span id="dispClass"></span></div>
+                <div class="info-item"><b>শাখা</b> <span id="dispSection"></span></div>
+                <div class="info-item"><b>রোল</b> <span id="dispRoll"></span></div>
+            </div>
+        </div>
+        <div id="netStatus"></div>
+        <div id="quizList"></div>
+        <div id="noQuiz" style="margin-top:30px; color:#95a5a6; border:2px dashed #ddd; padding:20px; border-radius:15px; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
+        <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:30px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
+    </div>
 </div>
 
 <script>
@@ -87,17 +93,31 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
     
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
-    let quizStartTime; 
+    let quizStartTime;
+    let activeQuizName = localStorage.getItem('activeQuiz'); // চেক করা হচ্ছে কোনো কুইজ আগে থেকে চলছে কিনা
 
     window.onload = () => {
         checkConnectivity();
-        if(currentUser) showDashboard();
+        if(currentUser) {
+            showDashboard();
+            // অ্যাপ নতুন করে ওপেন হলে যদি আগের কুইজ পেন্ডিং থাকে তবে সেটা ক্লিনআপ করো
+            if(activeQuizName) cleanupIncompleteQuiz();
+        }
         syncOfflineResults(); 
     };
+
+    // অ্যাপ মিনিমাইজ বা ক্লোজ করার সময় সতর্কতা (সরাসরি কেটে দিলে এটি সীমিত কাজ করে)
+    window.addEventListener('beforeunload', (event) => {
+        if(document.getElementById('quiz-container').style.display === 'block') {
+            event.preventDefault();
+            event.returnValue = ''; 
+        }
+    });
 
     function login() {
         const name = document.getElementById('uName').value.trim();
@@ -165,6 +185,12 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
+
+        if(!navigator.onLine) {
+            alert("পরীক্ষা শুরু করতে ইন্টারনেটের প্রয়োজন।");
+            btn.disabled = false; btn.innerText = 'পরীক্ষা শুরু করুন'; return;
+        }
+
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
         if (startTime === true) {
@@ -173,27 +199,34 @@
         }
         
         quizStartTime = startTime;
+        localStorage.setItem('activeQuiz', quizName); // লোকাল মেমোরিতে কুইজ মার্ক করা হলো
+
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
             const htmlContent = await response.text();
             
-            document.open();
-            document.write(htmlContent);
-            document.close();
+            const container = document.getElementById('quiz-container');
+            const iframe = document.getElementById('quiz-iframe');
+            container.style.display = 'block';
+            
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
             
             setupMessageListener(quizName);
 
-            // পরীক্ষা চলাকালীন ব্যাক বাটন লক
-            window.history.pushState(null, null, window.location.href);
+            window.history.pushState({quiz: true}, null, "");
             window.onpopstate = function() {
-                window.history.pushState(null, null, window.location.href);
-                alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
+                if (document.getElementById('quiz-container').style.display === 'block') {
+                    window.history.pushState({quiz: true}, null, "");
+                    alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
+                }
             };
         } catch (error) {
-            alert("ফাইল লোড করা সম্ভব হয়নি।");
-            btn.disabled = false;
-            btn.innerText = 'পরীক্ষা শুরু করুন';
+            alert("ফাইল লোড করতে সমস্যা হয়েছে।");
+            btn.disabled = false; btn.innerText = 'পরীক্ষা শুরু করুন';
         }
     }
 
@@ -206,36 +239,39 @@
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
                 const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
-                let hours = now.getHours();
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12 || 12;
-                const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
                 
                 const fullResult = {
                     ...e.data.data,
-                    id: currentUser.id, 
-                    name: currentUser.name,
-                    class: currentUser.cls, 
-                    section: currentUser.sec,
-                    roll: currentUser.roll, 
-                    quizName: quizName,
-                    submitTime: now.toLocaleDateString() + ", " + shortTime,
+                    id: currentUser.id, name: currentUser.name,
+                    class: currentUser.cls, section: currentUser.sec,
+                    roll: currentUser.roll, quizName: quizName,
+                    submitTime: now.toLocaleString('bn-BD'),
                     duration: timeTaken 
                 };
                 
                 saveResultLocally(fullResult);
                 syncOfflineResults();
+                localStorage.removeItem('activeQuiz'); // সাবমিট সফল হলে মার্ক মুছে দাও
 
-                // ব্যাক বাটন আনলক লজিক:
-                // কোনো নোটিফিকেশন ছাড়া সরাসরি ব্যাক বাটন হ্যান্ডলার পরিবর্তন করা হলো
                 window.onpopstate = function() {
-                    location.reload(); // ব্যাক বাটন চাপলে ইনডেক্স ফাইলে ফিরবে
+                    document.getElementById('quiz-container').style.display = 'none';
+                    location.reload(); 
                 };
-                
-                // হার্ডওয়্যার ব্যাক বাটন ইভেন্ট কার্যকর করার জন্য একটি পুশ স্টেট
-                window.history.pushState(null, null, window.location.href);
             }
         };
+    }
+
+    // অ্যাপ কেটে দিলে পুনরায় ওপেন করলে কুইজ ক্লিনআপ করার ফাংশন
+    function cleanupIncompleteQuiz() {
+        if(confirm("আপনার একটি পরীক্ষা অসমাপ্ত অবস্থায় ছিল। কুইজটি বাতিল করা হচ্ছে।")) {
+            if(navigator.onLine) {
+                db.ref(`quiz_control/${activeQuizName}/${currentUser.id}`).remove();
+                localStorage.removeItem('activeQuiz');
+                location.reload();
+            } else {
+                alert("কুইজ ক্লিনআপ করতে ইন্টারনেট সংযোগ প্রয়োজন।");
+            }
+        }
     }
 
     function saveResultLocally(data) {
@@ -248,12 +284,13 @@
         if (!navigator.onLine) return;
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
+
         queue.forEach((res, index) => {
             db.ref('quiz_results').push(res).then(() => {
-                db.ref(`quiz_control/${res.quizName}/${res.id}`).set(false);
+                db.ref(`quiz_control/${res.quizName}/${res.id}`).remove();
                 queue.splice(index, 1);
                 localStorage.setItem('pendingResults', JSON.stringify(queue));
-            }).catch(e => console.log("Sync Error:", e));
+            }).catch(e => console.log("সিঙ্ক হচ্ছে না..."));
         });
     }
 
@@ -261,8 +298,8 @@
         const status = document.getElementById('netStatus');
         const update = () => {
             status.innerHTML = navigator.onLine ? 
-                '<span class="status-badge online">● ইন্টারনেট সংযুক্ত</span>' : 
-                '<span class="status-badge offline">○ অফলাইন (ফলাফল পরে জমা হবে)</span>';
+                '<span class="status-badge online">● অনলাইন</span>' : 
+                '<span class="status-badge offline">○ অফলাইন (পরীক্ষা চলবে)</span>';
             if(navigator.onLine) syncOfflineResults();
         };
         window.addEventListener('online', update);
@@ -273,6 +310,7 @@
     function logout() {
         if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
             localStorage.removeItem('loggedUser');
+            localStorage.removeItem('activeQuiz');
             location.reload();
         }
     }
