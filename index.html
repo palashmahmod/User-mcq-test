@@ -6,7 +6,6 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    
     <title>শিক্ষার্থী ড্যাশবোর্ড - স্মার্ট কুইজ</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -33,6 +32,9 @@
         .offline { background: #ffebee; color: #e74c3c; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* রেজাল্ট টাইমার স্টাইল */
+        #resultTimerBox { background: #fff3cd; color: #856404; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
@@ -58,6 +60,7 @@
 </div>
 
 <div id="dashboard" class="card">
+    <div id="resultTimerBox">ফলাফল দেখার সময় বাকি: <span id="resTimer">05:00</span></div>
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
         <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
@@ -75,7 +78,7 @@
     <div id="netStatus"></div>
     <div id="quizList"></div>
     <div id="noQuiz" style="margin-top:30px; color:#95a5a6; border:2px dashed #ddd; padding:20px; border-radius:15px; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
-    <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:30px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
+    <button id="logoutBtn" class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:30px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
 </div>
 
 <script>
@@ -86,16 +89,27 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
     
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
-    let quizStartTime; 
+    let quizStartTime;
+
+    // ব্যাক বাটন প্রটেকশন (সব সময়ের জন্য)
+    function preventBack() {
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function() {
+            window.history.pushState(null, null, window.location.href);
+            // কুইজ চলাকালীন বা ড্যাশবোর্ডে ব্যাক বাটন কাজ করবে না
+        };
+    }
 
     window.onload = () => {
+        preventBack();
         checkConnectivity();
-        if(currentUser) showDashboard();
+        if(currentUser) {
+            checkResultTimer(); // ৫ মিনিটের টাইমার চেক
+        }
         syncOfflineResults(); 
     };
 
@@ -113,9 +127,7 @@
                 currentUser = { name, cls, sec, roll, id };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 showDashboard();
-            } else {
-                alert("আইডি বা পিন ভুল!");
-            }
+            } else { alert("আইডি বা পিন ভুল!"); }
         });
     }
 
@@ -130,9 +142,31 @@
         fetchAssignedQuizzes();
     }
 
+    function checkResultTimer() {
+        const resultEnd = localStorage.getItem('resultEndTime');
+        if (resultEnd) {
+            const timeLeft = resultEnd - Date.now();
+            if (timeLeft > 0) {
+                showDashboard();
+                startResultCountdown(resultEnd);
+            } else {
+                localStorage.removeItem('resultEndTime');
+                location.reload();
+            }
+        } else {
+            showDashboard();
+        }
+    }
+
     function fetchAssignedQuizzes() {
         const quizListDiv = document.getElementById('quizList');
         const noQuizDiv = document.getElementById('noQuiz');
+        // যদি রেজাল্ট মোড চালু থাকে তবে কুইজ লিস্ট দেখাবে না
+        if(localStorage.getItem('resultEndTime')) {
+            quizListDiv.innerHTML = '<div class="quiz-card">ফলাফল দেখা হচ্ছে...</div>';
+            return;
+        }
+
         db.ref('quiz_control').on('value', (snapshot) => {
             const allQuizzes = snapshot.val();
             quizListDiv.innerHTML = '';
@@ -140,7 +174,6 @@
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
                     const status = allQuizzes[quizName][currentUser.id];
-                    // status true মানে নতুন কুইজ, আর status number মানে আগের চলমান কুইজের শুরুর সময়
                     if (status === true || typeof status === 'number') {
                         foundAny = true;
                         createQuizCard(quizName, status);
@@ -166,36 +199,24 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
-
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
-
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
         }
-        
         quizStartTime = startTime;
-
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
             const htmlContent = await response.text();
-            
             document.open();
             document.write(htmlContent);
             document.close();
-            
+            preventBack();
             setupMessageListener(quizName);
-
-            // Back button protection
-            window.history.pushState(null, null, window.location.href);
-            window.onpopstate = function() {
-                window.history.pushState(null, null, window.location.href);
-                alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
-            };
         } catch (error) {
-            alert("ফাইল লোড করা সম্ভব হয়নি।");
+            alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
             btn.innerText = 'পরীক্ষা শুরু করুন';
         }
@@ -203,21 +224,18 @@
 
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
-            // কুইজ ফাইল থেকে বর্তমান সময় জানতে চাইলে তাকে পাঠানো হবে
             if (e.data.type === 'GET_START_TIME') {
                 e.source.postMessage({ type: 'SEND_START_TIME', startTime: quizStartTime }, '*');
             }
-
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
                 const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
-
                 let hours = now.getHours();
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
-
+                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -233,10 +251,40 @@
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 
+                // ৫ মিনিটের টাইমার সেট করা
+                const resEndTime = Date.now() + (5 * 60 * 1000);
+                localStorage.setItem('resultEndTime', resEndTime);
+                
                 alert("আপনার পরীক্ষা সম্পন্ন হয়েছে!");
                 location.reload(); 
             }
         };
+    }
+
+    function startResultCountdown(endTime) {
+        const box = document.getElementById('resultTimerBox');
+        const display = document.getElementById('resTimer');
+        const logoutBtn = document.getElementById('logoutBtn');
+        box.style.display = 'block';
+        logoutBtn.innerText = "ড্যাশবোর্ডে ফিরে যান";
+        logoutBtn.onclick = () => {
+            localStorage.removeItem('resultEndTime');
+            location.reload();
+        };
+
+        const timer = setInterval(() => {
+            const now = Date.now();
+            const distance = endTime - now;
+            if (distance < 0) {
+                clearInterval(timer);
+                localStorage.removeItem('resultEndTime');
+                location.reload();
+            } else {
+                const m = Math.floor(distance / 60000);
+                const s = Math.floor((distance % 60000) / 1000);
+                display.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+            }
+        }, 1000);
     }
 
     function saveResultLocally(data) {
@@ -272,6 +320,11 @@
     }
 
     function logout() {
+        if(localStorage.getItem('resultEndTime')) {
+            localStorage.removeItem('resultEndTime');
+            location.reload();
+            return;
+        }
         if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
             localStorage.removeItem('loggedUser');
             location.reload();
