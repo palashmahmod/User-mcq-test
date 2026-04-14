@@ -87,7 +87,12 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+
+    if (!firebase.apps.length) { 
+        firebase.initializeApp(firebaseConfig);
+        // অফলাইন সাপোর্ট চালু করা হয়েছে
+        firebase.database().goOnline();
+    }
     const db = firebase.database();
     
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
@@ -166,19 +171,21 @@
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
 
-        // স্টার্ট টাইম অনলাইনে সেভ করার চেষ্টা, নেট না থাকলে লোকাল ভেরিয়েবল ব্যবহার হবে
-        let startTime = Date.now();
-        if(navigator.onLine) {
+        let startTime;
+        try {
             const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
-            let cloudTime = snap.val();
-            if (cloudTime === true) {
-                await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
-            } else if (typeof cloudTime === 'number') {
-                startTime = cloudTime;
+            startTime = snap.val();
+            if (startTime === true) {
+                startTime = Date.now();
+                // অফলাইনেও এটি লোকাল ক্যাশে সেট হবে
+                db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
             }
+        } catch(e) {
+            startTime = Date.now();
         }
         
         quizStartTime = startTime;
+        
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
@@ -196,7 +203,7 @@
                 alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
             };
         } catch (error) {
-            alert("ফাইল লোড করা সম্ভব হয়নি। ইন্টারনেট সংযোগ চেক করুন।");
+            alert("পরীক্ষার ফাইল লোড করা সম্ভব হয়নি। নেট অন করে একবার ট্রাই করুন।");
             btn.disabled = false;
             btn.innerText = 'পরীক্ষা শুরু করুন';
         }
@@ -228,12 +235,10 @@
                     duration: timeTaken 
                 };
                 
-                // অফলাইন বা অনলাইন—উভয় ক্ষেত্রেই আগে লোকাল স্টোরেজে সেভ হবে
                 saveResultLocally(fullResult);
-                // নেট থাকলে তখনই সিঙ্ক হবে, না থাকলে নেট আসার পর হবে
                 syncOfflineResults();
 
-                // ব্যাক বাটন আনলক
+                // ব্যাক বাটন আনলক এবং রিলোড লজিক
                 window.onpopstate = function() {
                     location.reload(); 
                 };
@@ -249,27 +254,28 @@
     }
 
     function syncOfflineResults() {
-        if (!navigator.onLine) return;
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
-        if (queue.length === 0) return;
+        if (queue.length === 0 || !navigator.onLine) return;
 
         queue.forEach((res, index) => {
             db.ref('quiz_results').push(res).then(() => {
-                // সাকসেসফুলি অনলাইনে জমা হলে কুইজ লিস্ট থেকে মুছে ফেলার জন্য স্ট্যাটাস ফলস করা
-                db.ref(`quiz_control/${res.quizName}/${res.id}`).set(false);
+                // অনলাইনে সফলভাবে জমা হলে কুইজ তালিকা থেকে এটি সরিয়ে দেবে
+                db.ref(`quiz_control/${res.quizName}/${res.id}`).remove();
                 queue.splice(index, 1);
                 localStorage.setItem('pendingResults', JSON.stringify(queue));
-            }).catch(e => console.log("Sync Error:", e));
+            }).catch(e => console.log("Sync waiting for network..."));
         });
     }
 
     function checkConnectivity() {
         const status = document.getElementById('netStatus');
         const update = () => {
-            status.innerHTML = navigator.onLine ? 
-                '<span class="status-badge online">● ইন্টারনেট সংযুক্ত</span>' : 
-                '<span class="status-badge offline">○ অফলাইন (ফলাফল পরে জমা হবে)</span>';
-            if(navigator.onLine) syncOfflineResults();
+            if(navigator.onLine) {
+                status.innerHTML = '<span class="status-badge online">● ইন্টারনেট সংযুক্ত</span>';
+                syncOfflineResults();
+            } else {
+                status.innerHTML = '<span class="status-badge offline">○ অফলাইন মোড (পরীক্ষা চালিয়ে যান)</span>';
+            }
         };
         window.addEventListener('online', update);
         window.addEventListener('offline', update);
