@@ -90,8 +90,9 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
     db.ref().child('.info/connected').on('value', () => { syncOfflineResults(); });
+
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
-    let quizStartTime; // কুইজ শুরুর সময় ট্র্যাকিং
+    let quizStartTime; 
 
     window.onload = () => {
         checkConnectivity();
@@ -106,9 +107,7 @@
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
         const pass = document.getElementById('uPass').value.trim();
-
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
-
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
             if (userData) {
@@ -175,7 +174,7 @@
             if (!response.ok) throw new Error();
             const htmlContent = await response.text();
             
-            quizStartTime = Date.now(); // পরীক্ষা শুরুর সময় রেকর্ড
+            quizStartTime = Date.now(); 
 
             document.open();
             document.write(htmlContent);
@@ -201,8 +200,16 @@
                 const s = diff % 60;
                 const timeTaken = `${m}:${s < 10 ? '0' : ''}${s}`;
 
+                // AM/PM ফরম্যাটে সময় রূপান্তর
+                let hours = now.getHours();
+                let minutes = now.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; 
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                const shortTime = hours + ":" + minutes + " " + ampm;
+
                 const shortDate = now.toLocaleDateString();
-                const shortTime = now.getHours() + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
                 
                 const fullResult = {
                     ...e.data.data,
@@ -213,7 +220,7 @@
                     roll: currentUser.roll, 
                     quizName: quizName,
                     submitTime: shortDate + ", " + shortTime,
-                    duration: timeTaken // ডাটাবেজে পাঠানোর জন্য সময় যুক্ত করা হলো
+                    duration: timeTaken 
                 };
 
                 saveResultLocally(fullResult);
