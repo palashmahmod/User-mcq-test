@@ -33,10 +33,19 @@
         .offline { background: #ffebee; color: #e74c3c; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* রেজাল্ট পেজের ব্যাক বাটন স্টাইল */
+        #result-back-container { display: none; position: fixed; top: 10px; left: 10px; z-index: 9999; }
+        .back-btn { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 
 <body>
+
+<div id="result-back-container">
+    <button class="back-btn" onclick="location.reload()">ড্যাশবোর্ডে ফিরে যান</button>
+</div>
+
 <div id="login-section" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -222,9 +231,12 @@
                 
                 saveResultLocally(fullResult);
                 syncOfflineResults();
-                
-                // শুধুমাত্র নিচের alert লাইনটি সরিয়ে দেওয়া হয়েছে
-                location.reload(); 
+
+                // ফলাফল পেজে ব্যাক বাটন প্রদর্শন
+                const backBtnContainer = document.getElementById('result-back-container');
+                if(backBtnContainer) {
+                    backBtnContainer.style.display = 'block';
+                }
             }
         };
     }
