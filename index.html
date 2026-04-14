@@ -34,17 +34,29 @@
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* রেজাল্ট পেজের ব্যাক বাটন স্টাইল */
-        #result-back-container { display: none; position: fixed; top: 10px; left: 10px; z-index: 9999; }
-        .back-btn { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* রেজাল্ট পেজের জন্য ব্যাক বাটন স্টাইল */
+        #final-back-btn {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 2147483647; /* সর্বোচ্চ লেভেলে রাখা হয়েছে যাতে কুইজ ফাইলের উপরে দেখায় */
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 
 <body>
 
-<div id="result-back-container">
-    <button class="back-btn" onclick="location.reload()">ড্যাশবোর্ডে ফিরে যান</button>
-</div>
+<button id="final-back-btn" onclick="location.reload()">ড্যাশবোর্ডে ফিরে যান</button>
 
 <div id="login-section" class="card">
     <div class="header-profile">
@@ -232,11 +244,11 @@
                 saveResultLocally(fullResult);
                 syncOfflineResults();
 
-                // ফলাফল পেজে ব্যাক বাটন প্রদর্শন
-                const backBtnContainer = document.getElementById('result-back-container');
-                if(backBtnContainer) {
-                    backBtnContainer.style.display = 'block';
-                }
+                // সাবমিট হওয়ার পর নোটিফিকেশন ছাড়াই ফলাফল স্ক্রিনে ব্যাক বাটন দেখানো
+                document.getElementById('final-back-btn').style.display = 'block';
+                
+                // কুইজ চলাকালীন ব্যাক বাটন প্রোটেকশন সরিয়ে ফেলা (যাতে ইউজার ব্যাক বাটন চাপলে ড্যাশবোর্ডে ফিরতে পারে)
+                window.onpopstate = null;
             }
         };
     }
