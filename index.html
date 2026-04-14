@@ -165,11 +165,17 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
-        const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
-        let startTime = snap.val();
-        if (startTime === true) {
-            startTime = Date.now();
-            await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
+
+        // স্টার্ট টাইম অনলাইনে সেভ করার চেষ্টা, নেট না থাকলে লোকাল ভেরিয়েবল ব্যবহার হবে
+        let startTime = Date.now();
+        if(navigator.onLine) {
+            const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
+            let cloudTime = snap.val();
+            if (cloudTime === true) {
+                await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
+            } else if (typeof cloudTime === 'number') {
+                startTime = cloudTime;
+            }
         }
         
         quizStartTime = startTime;
@@ -184,14 +190,13 @@
             
             setupMessageListener(quizName);
 
-            // পরীক্ষা চলাকালীন ব্যাক বাটন লক
             window.history.pushState(null, null, window.location.href);
             window.onpopstate = function() {
                 window.history.pushState(null, null, window.location.href);
                 alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
             };
         } catch (error) {
-            alert("ফাইল লোড করা সম্ভব হয়নি।");
+            alert("ফাইল লোড করা সম্ভব হয়নি। ইন্টারনেট সংযোগ চেক করুন।");
             btn.disabled = false;
             btn.innerText = 'পরীক্ষা শুরু করুন';
         }
@@ -223,16 +228,15 @@
                     duration: timeTaken 
                 };
                 
+                // অফলাইন বা অনলাইন—উভয় ক্ষেত্রেই আগে লোকাল স্টোরেজে সেভ হবে
                 saveResultLocally(fullResult);
+                // নেট থাকলে তখনই সিঙ্ক হবে, না থাকলে নেট আসার পর হবে
                 syncOfflineResults();
 
-                // ব্যাক বাটন আনলক লজিক:
-                // কোনো নোটিফিকেশন ছাড়া সরাসরি ব্যাক বাটন হ্যান্ডলার পরিবর্তন করা হলো
+                // ব্যাক বাটন আনলক
                 window.onpopstate = function() {
-                    location.reload(); // ব্যাক বাটন চাপলে ইনডেক্স ফাইলে ফিরবে
+                    location.reload(); 
                 };
-                
-                // হার্ডওয়্যার ব্যাক বাটন ইভেন্ট কার্যকর করার জন্য একটি পুশ স্টেট
                 window.history.pushState(null, null, window.location.href);
             }
         };
@@ -248,8 +252,10 @@
         if (!navigator.onLine) return;
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
+
         queue.forEach((res, index) => {
             db.ref('quiz_results').push(res).then(() => {
+                // সাকসেসফুলি অনলাইনে জমা হলে কুইজ লিস্ট থেকে মুছে ফেলার জন্য স্ট্যাটাস ফলস করা
                 db.ref(`quiz_control/${res.quizName}/${res.id}`).set(false);
                 queue.splice(index, 1);
                 localStorage.setItem('pendingResults', JSON.stringify(queue));
