@@ -89,8 +89,7 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-    db.ref().child('.info/connected').on('value', () => { syncOfflineResults(); });
-
+    
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
 
@@ -110,16 +109,12 @@
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
-            if (userData) {
-                if (userData.password === pass) {
-                    currentUser = { name, cls, sec, roll, id };
-                    localStorage.setItem('loggedUser', JSON.stringify(currentUser));
-                    showDashboard();
-                } else {
-                    alert("দুঃখিত, আপনার পিন পাসওয়ার্ড সঠিক নয়!");
-                }
+            if (userData && userData.password === pass) {
+                currentUser = { name, cls, sec, roll, id };
+                localStorage.setItem('loggedUser', JSON.stringify(currentUser));
+                showDashboard();
             } else {
-                alert("এই আইডি নম্বরটি ডাটাবেজে পাওয়া যায়নি!");
+                alert("আইডি বা পিন ভুল!");
             }
         });
     }
@@ -144,9 +139,11 @@
             let foundAny = false;
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
-                    if (allQuizzes[quizName][currentUser.id] === true) {
+                    const status = allQuizzes[quizName][currentUser.id];
+                    // status true মানে নতুন কুইজ, আর status number মানে আগের চলমান কুইজের শুরুর সময়
+                    if (status === true || typeof status === 'number') {
                         foundAny = true;
-                        createQuizCard(quizName);
+                        createQuizCard(quizName, status);
                     }
                 }
             }
@@ -154,13 +151,14 @@
         });
     }
 
-    function createQuizCard(quizName) {
+    function createQuizCard(quizName, status) {
         const div = document.createElement('div');
         div.className = 'quiz-card';
+        const isRunning = typeof status === 'number';
         div.innerHTML = `
-            <span class="status-badge online">নতুন পরীক্ষা</span><br>
+            <span class="status-badge ${isRunning ? 'offline' : 'online'}">${isRunning ? 'পরীক্ষা চলছে...' : 'নতুন পরীক্ষা'}</span><br>
             <b style="color:var(--primary)">${quizName}.html</b>
-            <button class="btn" onclick="startQuiz('${quizName}', this)">পরীক্ষা শুরু করুন</button>
+            <button class="btn" onclick="startQuiz('${quizName}', this)">${isRunning ? 'পরীক্ষায় পুনরায় ফিরুন' : 'পরীক্ষা শুরু করুন'}</button>
         `;
         document.getElementById('quizList').appendChild(div);
     }
@@ -168,49 +166,58 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
+
+        const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
+        let startTime = snap.val();
+
+        if (startTime === true) {
+            startTime = Date.now();
+            await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
+        }
+        
+        quizStartTime = startTime;
+
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
-            if (!response.ok) throw new Error();
             const htmlContent = await response.text();
             
-            quizStartTime = Date.now(); 
-
             document.open();
             document.write(htmlContent);
             document.close();
             
             setupMessageListener(quizName);
+
+            // Back button protection
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = function() {
+                window.history.pushState(null, null, window.location.href);
+                alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
+            };
         } catch (error) {
-            alert("ফাইল পাওয়া যায়নি বা ইন্টারনেট সংযোগ বিচ্ছিন্ন।");
-            btn.innerText = 'পরীক্ষা শুরু করুন';
+            alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
+            btn.innerText = 'পরীক্ষা শুরু করুন';
         }
     }
 
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
+            // কুইজ ফাইল থেকে বর্তমান সময় জানতে চাইলে তাকে পাঠানো হবে
+            if (e.data.type === 'GET_START_TIME') {
+                e.source.postMessage({ type: 'SEND_START_TIME', startTime: quizStartTime }, '*');
+            }
+
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
-                const endTime = Date.now();
-                
-                // ডিউরেশন ক্যালকুলেশন
-                const diff = Math.floor((endTime - quizStartTime) / 1000);
-                const m = Math.floor(diff / 60);
-                const s = diff % 60;
-                const timeTaken = `${m}:${s < 10 ? '0' : ''}${s}`;
+                const diff = Math.floor((Date.now() - quizStartTime) / 1000);
+                const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
 
-                // AM/PM ফরম্যাটে সময় রূপান্তর
                 let hours = now.getHours();
-                let minutes = now.getMinutes();
                 const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12; 
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-                const shortTime = hours + ":" + minutes + " " + ampm;
+                hours = hours % 12 || 12;
+                const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
 
-                const shortDate = now.toLocaleDateString();
-                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -219,28 +226,15 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
-                    submitTime: shortDate + ", " + shortTime,
+                    submitTime: now.toLocaleDateString() + ", " + shortTime,
                     duration: timeTaken 
                 };
 
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 
-                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! ফলাফল দেখা শেষ হলে ড্যাশবোর্ডে ফিরুন।");
-                const backBtn = document.createElement('button');
-                backBtn.innerHTML = '⬅ ড্যাশবোর্ডে ফিরুন';
-                backBtn.style = "position:fixed; top:10px; left:10px; z-index:99999; padding:12px 20px; background:#e74c3c; color:white; border:none; border-radius:30px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer;";
-                backBtn.onclick = function() { location.reload(); };
-                document.body.appendChild(backBtn);
-
-                window.history.pushState(null, null, window.location.href);
-                window.onpopstate = function() {
-                    if(confirm("আপনি কি ড্যাশবোর্ডে ফিরে যেতে চান?")) {
-                        location.reload();
-                    } else {
-                        window.history.pushState(null, null, window.location.href);
-                    }
-                };
+                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে!");
+                location.reload(); 
             }
         };
     }
@@ -278,12 +272,9 @@
     }
 
     function logout() {
-        const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
-        if (pass === "pm5522") {
+        if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
             localStorage.removeItem('loggedUser');
             location.reload();
-        } else if (pass !== null) {
-            alert("ভুল পাসওয়ার্ড!");
         }
     }
 </script>
