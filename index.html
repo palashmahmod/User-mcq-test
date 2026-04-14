@@ -36,7 +36,6 @@
     </style>
 </head>
 <body>
-
 <div id="login-section" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -51,8 +50,10 @@
     </div>
     <div style="display: flex; gap: 10px;">
         <input type="number" id="uRoll" placeholder="রোল নং">
-        <input type="text" id="uID" placeholder="ইউজার আইডি (ID)">
+        <input type="number" id="uID" placeholder="আইডি নং">
     </div>
+    <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
+
     <button class="btn" onclick="login()">প্রবেশ করুন</button>
 </div>
 
@@ -88,9 +89,7 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-
     db.ref().child('.info/connected').on('value', () => { syncOfflineResults(); });
-
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
 
     window.onload = () => {
@@ -105,10 +104,26 @@
         const sec = document.getElementById('uSection').value.trim();
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
-        if(!name || !cls || !sec || !roll || !id) return alert("সবগুলো বক্স পূরণ করুন।");
-        currentUser = { name, cls, sec, roll, id };
-        localStorage.setItem('loggedUser', JSON.stringify(currentUser));
-        showDashboard();
+        const pass = document.getElementById('uPass').value.trim(); // পিন পাসওয়ার্ড
+
+        if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
+
+        // ডাটাবেজ থেকে পিন ভেরিফিকেশন
+        db.ref('users/' + id).once('value', (snapshot) => {
+            const userData = snapshot.val();
+            if (userData) {
+                if (userData.password === pass) {
+                    // পিন মিলেছে, এখন লগইন সফল
+                    currentUser = { name, cls, sec, roll, id };
+                    localStorage.setItem('loggedUser', JSON.stringify(currentUser));
+                    showDashboard();
+                } else {
+                    alert("দুঃখিত, আপনার পিন পাসওয়ার্ড সঠিক নয়!");
+                }
+            } else {
+                alert("এই আইডি নম্বরটি ডাটাবেজে পাওয়া যায়নি!");
+            }
+        });
     }
 
     function showDashboard() {
@@ -190,20 +205,16 @@
                     quizName: quizName,
                     submitTime: shortDate + ", " + shortTime
                 };
-
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 
                 alert("আপনার পরীক্ষা সম্পন্ন হয়েছে! ফলাফল দেখা শেষ হলে ড্যাশবোর্ডে ফিরুন।");
-
-                // ফলাফল পেজে 'ড্যাশবোর্ডে ফিরুন' বাটন যোগ করা
                 const backBtn = document.createElement('button');
                 backBtn.innerHTML = '⬅ ড্যাশবোর্ডে ফিরুন';
                 backBtn.style = "position:fixed; top:10px; left:10px; z-index:99999; padding:12px 20px; background:#e74c3c; color:white; border:none; border-radius:30px; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer;";
                 backBtn.onclick = function() { location.reload(); };
                 document.body.appendChild(backBtn);
 
-                // মোবাইল ব্যাক বাটন সাপোর্ট
                 window.history.pushState(null, null, window.location.href);
                 window.onpopstate = function() {
                     if(confirm("আপনি কি ড্যাশবোর্ডে ফিরে যেতে চান?")) {
