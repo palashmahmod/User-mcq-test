@@ -6,6 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    
     <title>শিক্ষার্থী ড্যাশবোর্ড - স্মার্ট কুইজ</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -32,20 +33,9 @@
         .offline { background: #ffebee; color: #e74c3c; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* ফলাফল পেজের ফিক্সড হেডার স্টাইল */
-        #resultHeader { display: none; position: fixed; top: 0; left: 0; width: 100%; background: #ffffff; z-index: 99999; padding: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.15); text-align: center; border-bottom: 2px solid var(--accent); }
-        .res-top-btn { background: #e74c3c; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; margin-bottom: 5px; }
-        #resTimeText { font-size: 13px; color: #2c3e50; font-weight: 700; display: block; }
     </style>
 </head>
-
 <body>
-
-<div id="resultHeader">
-    <button class="res-top-btn" onclick="exitToDashboard()">ড্যাশবোর্ডে ফিরে যান</button>
-    <span id="resTimeText">ফলাফল দেখার সময় বাকি: <span id="timerDisplay">05:00</span></span>
-</div>
 
 <div id="login-section" class="card">
     <div class="header-profile">
@@ -96,6 +86,7 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
     
@@ -104,24 +95,8 @@
 
     window.onload = () => {
         checkConnectivity();
-        if(currentUser) {
-            const savedExpiry = localStorage.getItem('resExpiry');
-            const savedQuizName = localStorage.getItem('activeResName');
-            if (savedExpiry && Date.now() < savedExpiry) {
-                loadResultView(savedQuizName, savedExpiry);
-            } else {
-                localStorage.removeItem('resExpiry');
-                localStorage.removeItem('activeResName');
-                showDashboard();
-            }
-        }
+        if(currentUser) showDashboard();
         syncOfflineResults(); 
-        
-        // ব্যাক বাটন সম্পূর্ণ ডিজঅ্যাবল (কুইজ ও রেজাল্ট পেইজে আটকাবে)
-        window.history.pushState(null, null, window.location.href);
-        window.onpopstate = function() {
-            window.history.pushState(null, null, window.location.href);
-        };
     };
 
     function login() {
@@ -138,7 +113,9 @@
                 currentUser = { name, cls, sec, roll, id };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 showDashboard();
-            } else { alert("আইডি বা পিন ভুল!"); }
+            } else {
+                alert("আইডি বা পিন ভুল!");
+            }
         });
     }
 
@@ -163,6 +140,7 @@
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
                     const status = allQuizzes[quizName][currentUser.id];
+                    // status true মানে নতুন কুইজ, আর status number মানে আগের চলমান কুইজের শুরুর সময়
                     if (status === true || typeof status === 'number') {
                         foundAny = true;
                         createQuizCard(quizName, status);
@@ -188,23 +166,36 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
+
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
+
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
         }
+        
         quizStartTime = startTime;
+
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
             const htmlContent = await response.text();
+            
             document.open();
             document.write(htmlContent);
             document.close();
+            
             setupMessageListener(quizName);
+
+            // Back button protection
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = function() {
+                window.history.pushState(null, null, window.location.href);
+                alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
+            };
         } catch (error) {
-            alert("ফাইল লোড করা সম্ভব হয়নি।");
+            alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
             btn.innerText = 'পরীক্ষা শুরু করুন';
         }
@@ -212,18 +203,21 @@
 
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
+            // কুইজ ফাইল থেকে বর্তমান সময় জানতে চাইলে তাকে পাঠানো হবে
             if (e.data.type === 'GET_START_TIME') {
                 e.source.postMessage({ type: 'SEND_START_TIME', startTime: quizStartTime }, '*');
             }
+
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
                 const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
+
                 let hours = now.getHours();
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
-                
+
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -235,56 +229,14 @@
                     submitTime: now.toLocaleDateString() + ", " + shortTime,
                     duration: timeTaken 
                 };
-                
+
                 saveResultLocally(fullResult);
                 syncOfflineResults();
-
-                // টাইমার সেট (৫ মিনিট)
-                const expiry = Date.now() + (5 * 60 * 1000);
-                localStorage.setItem('resExpiry', expiry);
-                localStorage.setItem('activeResName', quizName);
-
-                // পপ-আপ মেসেজ রিমুভ করা হয়েছে, সরাসরি রিলোড হবে
+                
+                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে!");
                 location.reload(); 
             }
         };
-    }
-
-    async function loadResultView(quizName, expiry) {
-        try {
-            const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
-            const response = await fetch(fileUrl, { cache: "no-store" });
-            const htmlContent = await response.text();
-            
-            document.open();
-            document.write(htmlContent);
-            document.close();
-
-            // ফলাফল পেজের উপরের হেডার চালু করা
-            const header = document.getElementById('resultHeader');
-            if(header) {
-                header.style.display = 'block';
-                const timerDisplay = document.getElementById('timerDisplay');
-                const resTimer = setInterval(() => {
-                    const now = Date.now();
-                    const left = expiry - now;
-                    if (left <= 0) {
-                        clearInterval(resTimer);
-                        exitToDashboard();
-                    } else {
-                        const m = Math.floor(left / 60000);
-                        const s = Math.floor((left % 60000) / 1000);
-                        timerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-                    }
-                }, 1000);
-            }
-        } catch (e) { exitToDashboard(); }
-    }
-
-    function exitToDashboard() {
-        localStorage.removeItem('resExpiry');
-        localStorage.removeItem('activeResName');
-        location.reload();
     }
 
     function saveResultLocally(data) {
