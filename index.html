@@ -32,12 +32,20 @@
         .offline { background: #ffebee; color: #e74c3c; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* রেজাল্ট টাইমার স্টাইল */
-        #resultTimerBox { background: #fff3cd; color: #856404; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; display: none; }
+
+        /* ফলাফল পেজের বিশেষ হেডার */
+        #resultHeader { display: none; position: fixed; top: 0; left: 0; width: 100%; background: #fff; z-index: 10000; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        .res-top-btn { background: #e74c3c; color: #fff; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; margin-bottom: 5px; }
+        #resTimeText { font-size: 12px; color: #7f8c8d; font-weight: bold; display: block; }
     </style>
 </head>
+
 <body>
+
+<div id="resultHeader">
+    <button class="res-top-btn" onclick="exitToDashboard()">ডেসবোর্ডে ফিরে যান</button>
+    <span id="resTimeText">ফলাফল দেখার সময় বাকি: <span id="timerDisplay">05:00</span></span>
+</div>
 
 <div id="login-section" class="card">
     <div class="header-profile">
@@ -60,7 +68,6 @@
 </div>
 
 <div id="dashboard" class="card">
-    <div id="resultTimerBox">ফলাফল দেখার সময় বাকি: <span id="resTimer">05:00</span></div>
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
         <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
@@ -78,7 +85,7 @@
     <div id="netStatus"></div>
     <div id="quizList"></div>
     <div id="noQuiz" style="margin-top:30px; color:#95a5a6; border:2px dashed #ddd; padding:20px; border-radius:15px; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
-    <button id="logoutBtn" class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:30px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
+    <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:30px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
 </div>
 
 <script>
@@ -93,24 +100,31 @@
     const db = firebase.database();
     
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
-    let quizStartTime;
+    let quizStartTime; 
 
-    // ব্যাক বাটন প্রটেকশন (সব সময়ের জন্য)
-    function preventBack() {
+    window.onload = () => {
+        checkConnectivity();
+        if(currentUser) {
+            // চেক করা হচ্ছে আগে থেকে কোনো রেজাল্ট টাইমার চলছে কি না
+            const savedExpiry = localStorage.getItem('resExpiry');
+            const savedQuizName = localStorage.getItem('activeResName');
+            if (savedExpiry && Date.now() < savedExpiry) {
+                // সরাসরি রেজাল্ট পেজ লোড করা
+                loadResultView(savedQuizName, savedExpiry);
+            } else {
+                localStorage.removeItem('resExpiry');
+                localStorage.removeItem('activeResName');
+                showDashboard();
+            }
+        }
+        syncOfflineResults(); 
+        
+        // ব্যাক বাটন প্রটেকশন
         window.history.pushState(null, null, window.location.href);
         window.onpopstate = function() {
             window.history.pushState(null, null, window.location.href);
-            // কুইজ চলাকালীন বা ড্যাশবোর্ডে ব্যাক বাটন কাজ করবে না
+            alert("পিছনে যাওয়া নিষেধ। স্ক্রিনের বাটন ব্যবহার করুন।");
         };
-    }
-
-    window.onload = () => {
-        preventBack();
-        checkConnectivity();
-        if(currentUser) {
-            checkResultTimer(); // ৫ মিনিটের টাইমার চেক
-        }
-        syncOfflineResults(); 
     };
 
     function login() {
@@ -127,7 +141,9 @@
                 currentUser = { name, cls, sec, roll, id };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 showDashboard();
-            } else { alert("আইডি বা পিন ভুল!"); }
+            } else {
+                alert("আইডি বা পিন ভুল!");
+            }
         });
     }
 
@@ -142,31 +158,9 @@
         fetchAssignedQuizzes();
     }
 
-    function checkResultTimer() {
-        const resultEnd = localStorage.getItem('resultEndTime');
-        if (resultEnd) {
-            const timeLeft = resultEnd - Date.now();
-            if (timeLeft > 0) {
-                showDashboard();
-                startResultCountdown(resultEnd);
-            } else {
-                localStorage.removeItem('resultEndTime');
-                location.reload();
-            }
-        } else {
-            showDashboard();
-        }
-    }
-
     function fetchAssignedQuizzes() {
         const quizListDiv = document.getElementById('quizList');
         const noQuizDiv = document.getElementById('noQuiz');
-        // যদি রেজাল্ট মোড চালু থাকে তবে কুইজ লিস্ট দেখাবে না
-        if(localStorage.getItem('resultEndTime')) {
-            quizListDiv.innerHTML = '<div class="quiz-card">ফলাফল দেখা হচ্ছে...</div>';
-            return;
-        }
-
         db.ref('quiz_control').on('value', (snapshot) => {
             const allQuizzes = snapshot.val();
             quizListDiv.innerHTML = '';
@@ -213,7 +207,6 @@
             document.open();
             document.write(htmlContent);
             document.close();
-            preventBack();
             setupMessageListener(quizName);
         } catch (error) {
             alert("ফাইল লোড করা সম্ভব হয়নি।");
@@ -235,7 +228,6 @@
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
-                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -247,44 +239,59 @@
                     submitTime: now.toLocaleDateString() + ", " + shortTime,
                     duration: timeTaken 
                 };
-
                 saveResultLocally(fullResult);
                 syncOfflineResults();
-                
-                // ৫ মিনিটের টাইমার সেট করা
-                const resEndTime = Date.now() + (5 * 60 * 1000);
-                localStorage.setItem('resultEndTime', resEndTime);
-                
+
+                // ৫ মিনিটের টাইমার মোড চালু
+                const expiry = Date.now() + (5 * 60 * 1000);
+                localStorage.setItem('resExpiry', expiry);
+                localStorage.setItem('activeResName', quizName);
+
                 alert("আপনার পরীক্ষা সম্পন্ন হয়েছে!");
                 location.reload(); 
             }
         };
     }
 
-    function startResultCountdown(endTime) {
-        const box = document.getElementById('resultTimerBox');
-        const display = document.getElementById('resTimer');
-        const logoutBtn = document.getElementById('logoutBtn');
-        box.style.display = 'block';
-        logoutBtn.innerText = "ড্যাশবোর্ডে ফিরে যান";
-        logoutBtn.onclick = () => {
-            localStorage.removeItem('resultEndTime');
-            location.reload();
-        };
+    // ফলাফল পেজ লোড করার ফাংশন
+    async function loadResultView(quizName, expiry) {
+        try {
+            const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
+            const response = await fetch(fileUrl, { cache: "no-store" });
+            const htmlContent = await response.text();
+            
+            // UI ক্লিন করে ফলাফল দেখানো
+            document.open();
+            document.write(htmlContent);
+            document.close();
 
-        const timer = setInterval(() => {
-            const now = Date.now();
-            const distance = endTime - now;
-            if (distance < 0) {
-                clearInterval(timer);
-                localStorage.removeItem('resultEndTime');
-                location.reload();
-            } else {
-                const m = Math.floor(distance / 60000);
-                const s = Math.floor((distance % 60000) / 1000);
-                display.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-            }
-        }, 1000);
+            // ৫ মিনিটের টাইমার এবং বাটন দেখানো
+            const header = document.getElementById('resultHeader');
+            header.style.display = 'block';
+            
+            const timerDisplay = document.getElementById('timerDisplay');
+            const resTimer = setInterval(() => {
+                const now = Date.now();
+                const left = expiry - now;
+                if (left <= 0) {
+                    clearInterval(resTimer);
+                    exitToDashboard();
+                } else {
+                    const m = Math.floor(left / 60000);
+                    const s = Math.floor((left % 60000) / 1000);
+                    timerDisplay.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+                }
+            }, 1000);
+
+        } catch (e) {
+            exitToDashboard();
+        }
+    }
+
+    function exitToDashboard() {
+        localStorage.removeItem('resExpiry');
+        localStorage.removeItem('activeResName');
+        location.reload();
     }
 
     function saveResultLocally(data) {
@@ -320,11 +327,6 @@
     }
 
     function logout() {
-        if(localStorage.getItem('resultEndTime')) {
-            localStorage.removeItem('resultEndTime');
-            location.reload();
-            return;
-        }
         if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
             localStorage.removeItem('loggedUser');
             location.reload();
