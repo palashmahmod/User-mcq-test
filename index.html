@@ -35,8 +35,8 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
 
+<body>
 <div id="login-section" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -86,7 +86,6 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
     
@@ -140,7 +139,6 @@
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
                     const status = allQuizzes[quizName][currentUser.id];
-                    // status true মানে নতুন কুইজ, আর status number মানে আগের চলমান কুইজের শুরুর সময়
                     if (status === true || typeof status === 'number') {
                         foundAny = true;
                         createQuizCard(quizName, status);
@@ -166,17 +164,14 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
-
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
-
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
         }
         
         quizStartTime = startTime;
-
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
@@ -187,15 +182,13 @@
             document.close();
             
             setupMessageListener(quizName);
-
-            // Back button protection
             window.history.pushState(null, null, window.location.href);
             window.onpopstate = function() {
                 window.history.pushState(null, null, window.location.href);
                 alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
             };
         } catch (error) {
-            alert("ফাইল লোড করা সম্ভব হয়নি।");
+            alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
             btn.innerText = 'পরীক্ষা শুরু করুন';
         }
@@ -203,21 +196,18 @@
 
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
-            // কুইজ ফাইল থেকে বর্তমান সময় জানতে চাইলে তাকে পাঠানো হবে
             if (e.data.type === 'GET_START_TIME') {
                 e.source.postMessage({ type: 'SEND_START_TIME', startTime: quizStartTime }, '*');
             }
-
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
                 const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
-
                 let hours = now.getHours();
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
-
+                
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -229,11 +219,11 @@
                     submitTime: now.toLocaleDateString() + ", " + shortTime,
                     duration: timeTaken 
                 };
-
+                
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 
-                alert("আপনার পরীক্ষা সম্পন্ন হয়েছে!");
+                // শুধুমাত্র নিচের alert লাইনটি সরিয়ে দেওয়া হয়েছে
                 location.reload(); 
             }
         };
