@@ -36,6 +36,7 @@
     </style>
 </head>
 <body>
+
 <div id="login-section" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -53,7 +54,6 @@
         <input type="number" id="uID" placeholder="আইডি নং">
     </div>
     <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
-
     <button class="btn" onclick="login()">প্রবেশ করুন</button>
 </div>
 
@@ -91,6 +91,7 @@
     const db = firebase.database();
     db.ref().child('.info/connected').on('value', () => { syncOfflineResults(); });
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
+    let quizStartTime; // কুইজ শুরুর সময় ট্র্যাকিং
 
     window.onload = () => {
         checkConnectivity();
@@ -104,24 +105,22 @@
         const sec = document.getElementById('uSection').value.trim();
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
-        const pass = document.getElementById('uPass').value.trim(); // পিন পাসওয়ার্ড
+        const pass = document.getElementById('uPass').value.trim();
 
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
 
-        // ডাটাবেজ থেকে পিন ভেরিফিকেশন
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
             if (userData) {
                 if (userData.password === pass) {
-                    // পিন মিলেছে, এখন লগইন সফল
                     currentUser = { name, cls, sec, roll, id };
                     localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                     showDashboard();
                 } else {
-                    alert("দুঃখিত, আপনার পিন পাসওয়ার্ড সঠিক নয়!");
+                    alert("দুঃখিত, আপনার পিন পাসওয়ার্ড সঠিক নয়!");
                 }
             } else {
-                alert("এই আইডি নম্বরটি ডাটাবেজে পাওয়া যায়নি!");
+                alert("এই আইডি নম্বরটি ডাটাবেজে পাওয়া যায়নি!");
             }
         });
     }
@@ -176,6 +175,8 @@
             if (!response.ok) throw new Error();
             const htmlContent = await response.text();
             
+            quizStartTime = Date.now(); // পরীক্ষা শুরুর সময় রেকর্ড
+
             document.open();
             document.write(htmlContent);
             document.close();
@@ -192,6 +193,14 @@
         window.onmessage = function(e) {
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
+                const endTime = Date.now();
+                
+                // ডিউরেশন ক্যালকুলেশন
+                const diff = Math.floor((endTime - quizStartTime) / 1000);
+                const m = Math.floor(diff / 60);
+                const s = diff % 60;
+                const timeTaken = `${m}:${s < 10 ? '0' : ''}${s}`;
+
                 const shortDate = now.toLocaleDateString();
                 const shortTime = now.getHours() + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
                 
@@ -203,8 +212,10 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
-                    submitTime: shortDate + ", " + shortTime
+                    submitTime: shortDate + ", " + shortTime,
+                    duration: timeTaken // ডাটাবেজে পাঠানোর জন্য সময় যুক্ত করা হলো
                 };
+
                 saveResultLocally(fullResult);
                 syncOfflineResults();
                 
