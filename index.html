@@ -103,6 +103,7 @@
     
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
+
     window.onload = () => {
         checkConnectivity();
         if(currentUser) showDashboard();
@@ -175,14 +176,17 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
+
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
+
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
         }
         
         quizStartTime = startTime;
+
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
@@ -193,11 +197,13 @@
             document.close();
             
             setupMessageListener(quizName);
+
             window.history.pushState(null, null, window.location.href);
             window.onpopstate = function() {
                 window.history.pushState(null, null, window.location.href);
                 alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
             };
+
         } catch (error) {
             alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
@@ -208,18 +214,23 @@
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
             if (e.data.type === 'GET_START_TIME') {
-                e.source.postMessage({ type: 'SEND_START_TIME', startTime: quizStartTime }, '*');
+                e.source.postMessage({ 
+                    type: 'SEND_START_TIME', 
+                    startTime: quizStartTime,
+                    serverNow: Date.now() 
+                }, '*');
             }
+
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
                 const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
+                
                 let hours = now.getHours();
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
                 
-                // সঠিক বিষয়ের নাম কুইজ ফাইল থেকে খুঁজে বের করা
                 let extractedSubject = "সাধারণ";
                 const pTag = document.querySelector('.start-screen p');
                 if (pTag) {
