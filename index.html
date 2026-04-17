@@ -196,7 +196,17 @@
             document.write(htmlContent);
             document.close();
             
+            // কুইজ ফাইলের ভেতর মেসেজ পাঠানো এবং অটো-টাইমার চেক করা
             setupMessageListener(quizName);
+
+            // এক্সট্রা সিকিউরিটি: ফাইল লোড হওয়ার পর কুইজ ফাইলের সাবমিট বাটনকে ট্রিগার করা যদি সময় শেষ হয়ে যায়
+            setTimeout(() => {
+                 window.postMessage({ 
+                    type: 'SEND_START_TIME', 
+                    startTime: quizStartTime,
+                    serverNow: Date.now() 
+                }, '*');
+            }, 500);
 
             window.history.pushState(null, null, window.location.href);
             window.onpopstate = function() {
@@ -265,6 +275,9 @@
                     location.reload(); 
                 };
                 window.history.pushState(null, null, window.location.href);
+                
+                // সাবমিট হওয়ার সাথে সাথে ড্যাশবোর্ডে ফিরে যাওয়া নিশ্চিত করা
+                setTimeout(() => { location.reload(); }, 1000);
             }
         };
     }
