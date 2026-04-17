@@ -33,8 +33,7 @@
         .offline { background: #ffebee; color: #e74c3c; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* নতুন রেজাল্ট বাটন স্টাইল */
+        
         .archive-btn { 
             display: inline-flex; align-items: center; justify-content: center; gap: 8px;
             background: #fff; color: #34495e; border: 1.5px solid #dcdde1; 
@@ -82,11 +81,9 @@
             <div class="info-item"><b>রোল</b> <span id="dispRoll"></span></div>
         </div>
     </div>
-
     <a href="file_A.html" class="archive-btn">
         <span>📊</span> ফলাফল সংগ্রহশালা
     </a>
-
     <div id="netStatus"></div>
     <div id="quizList"></div>
     <div id="noQuiz" style="margin-top:30px; color:#95a5a6; border:2px dashed #ddd; padding:20px; border-radius:15px; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
@@ -101,13 +98,11 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
     
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
-
     window.onload = () => {
         checkConnectivity();
         if(currentUser) showDashboard();
@@ -224,6 +219,19 @@
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
                 
+                // সঠিক বিষয়ের নাম কুইজ ফাইল থেকে খুঁজে বের করা
+                let extractedSubject = "সাধারণ";
+                const pTag = document.querySelector('.start-screen p');
+                if (pTag) {
+                    const parts = pTag.innerText.split('|');
+                    for (let part of parts) {
+                        if (part.includes('বিষয়')) {
+                            extractedSubject = part.split(':')[1]?.trim() || "সাধারণ";
+                            break;
+                        }
+                    }
+                }
+
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -232,19 +240,16 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
+                    subject: extractedSubject,
                     submitTime: now.toLocaleDateString() + ", " + shortTime,
                     duration: timeTaken,
-                    // সরাসরি সাবমিট পেইজ থেকে HTML সোর্স কপি করা
                     fullPageHTML: document.getElementById('mainArea')?.innerHTML || ""
                 };
                 
-                // ১. ফায়ারবেস ও অফলাইন সিংকিং (বিদ্যমান পদ্ধতি)
                 saveResultLocally(fullResult);
                 syncOfflineResults();
-
-                // ২. ফলাফল সংগ্রহশালায় সরাসরি সেভ (নতুন পদ্ধতি)
                 saveToArchive(fullResult);
-
+                
                 window.onpopstate = function() {
                     location.reload(); 
                 };
@@ -253,10 +258,9 @@
         };
     }
 
-    // ফলাফল সংগ্রহশালায় ডাটা সেভ করার ফাংশন
     function saveToArchive(data) {
         let archive = JSON.parse(localStorage.getItem('quiz_archive_db') || '[]');
-        archive.unshift(data); // নতুন রেজাল্ট সবার উপরে থাকবে
+        archive.unshift(data);
         localStorage.setItem('quiz_archive_db', JSON.stringify(archive));
     }
 
