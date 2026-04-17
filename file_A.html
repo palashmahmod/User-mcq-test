@@ -25,12 +25,9 @@
             align-items: center;
         }
 
-        /* স্টিকি হেডার এবং ব্যাক বাটন */
         .header {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: 60px;
             background: var(--primary);
             display: flex;
@@ -41,41 +38,12 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        .back-btn {
-            text-decoration: none;
-            color: white;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 16px;
-        }
+        .back-btn { text-decoration: none; color: white; font-weight: bold; font-size: 16px; }
+        .clear-all { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: bold; }
 
-        .clear-all {
-            background: var(--danger);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+        .container { width: 90%; max-width: 500px; }
+        .page-title { text-align: center; color: var(--primary); margin-bottom: 20px; font-size: 20px; font-weight: bold; }
 
-        .container {
-            width: 90%;
-            max-width: 500px;
-        }
-
-        .page-title {
-            text-align: center;
-            color: var(--primary);
-            margin-bottom: 20px;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        /* কুইজ লিস্ট আইটেম */
         .result-item {
             background: var(--white);
             margin-bottom: 15px;
@@ -86,107 +54,45 @@
             gap: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             border-left: 5px solid var(--accent);
-            position: relative;
             animation: fadeIn 0.5s ease;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .serial-no {
             background: var(--accent);
             color: white;
-            width: 30px;
-            height: 30px;
+            width: 30px; height: 30px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            flex-shrink: 0;
-            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; flex-shrink: 0; font-size: 14px;
         }
 
-        .result-info {
-            flex-grow: 1;
-            cursor: pointer;
-        }
+        .result-info { flex-grow: 1; cursor: pointer; }
+        .result-info h3 { margin: 0; font-size: 14px; color: var(--primary); line-height: 1.5; }
+        .result-info p { margin: 4px 0 0; font-size: 11.5px; color: #7f8c8d; }
 
-        .result-info h3 {
-            margin: 0;
-            font-size: 14px;
-            color: var(--primary);
-            line-height: 1.5;
-        }
+        .delete-btn { color: #bdc3c7; background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px; }
 
-        .result-info p {
-            margin: 4px 0 0;
-            font-size: 11.5px;
-            color: #7f8c8d;
-        }
-
-        .delete-btn {
-            color: #bdc3c7;
-            background: none;
-            border: none;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 5px;
-            transition: 0.3s;
-        }
-
-        .delete-btn:hover {
-            color: var(--danger);
-        }
-
-        /* ডিটেইলস পপআপ */
         .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7); z-index: 2000;
+            justify-content: center; align-items: center;
         }
 
         .modal-content {
-            background: white;
-            width: 95%;
-            max-width: 600px;
-            height: 85vh;
-            border-radius: 20px;
-            overflow-y: auto;
-            position: relative;
-            padding: 20px;
-            box-sizing: border-box;
+            background: white; width: 95%; max-width: 600px;
+            height: 85vh; border-radius: 20px;
+            overflow-y: auto; position: relative; padding: 20px; box-sizing: border-box;
         }
 
         .close-modal {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--primary);
-            background: #eee;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer;
+            background: #eee; width: 35px; height: 35px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        #no-data {
-            text-align: center;
-            margin-top: 50px;
-            color: #95a5a6;
-        }
-
-        /* কুইজ ফাইলের ভিতরের স্টাইল */
+        /* কুইজ স্টাইল কপি */
         .res-box { background: #e8f6f3; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--success); }
         .option-btn { border: 1px solid #ddd; padding: 8px; margin: 5px 0; border-radius: 5px; font-size: 13px; position: relative; }
         .correct { background: #d4edda !important; border-color: #27ae60 !important; }
@@ -204,7 +110,7 @@
     <div class="container">
         <div class="page-title">📊 ফলাফল সংগ্রহশালা</div>
         <div id="result-list"></div>
-        <div id="no-data" style="display:none;">এখনো কোনো ফলাফল সংরক্ষিত নেই।</div>
+        <div id="no-data" style="display:none; text-align: center; margin-top: 50px; color: #95a5a6;">এখনো কোনো ফলাফল সংরক্ষিত নেই।</div>
     </div>
 
     <div id="detailModal" class="modal">
@@ -221,20 +127,16 @@
             const archive = JSON.parse(localStorage.getItem('quiz_archive_db') || '[]');
 
             listDiv.innerHTML = '';
-
-            if (archive.length === 0) {
-                noDataDiv.style.display = 'block';
-                return;
-            }
-
+            if (archive.length === 0) { noDataDiv.style.display = 'block'; return; }
             noDataDiv.style.display = 'none';
 
             archive.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 
-                // বাটন নাম বিন্যাস: কুইজের নাম | বিষয়ের নাম | অধ্যায়
-                const displayTitle = `${item.quizTitle || 'মডেল টেস্ট'} | গণিত | অধ্যায়: ${item.chapter || '১ম'}`;
+                // এখানে item.subject ব্যবহার করা হয়েছে যা কুইজ ফাইল থেকে আসবে
+                const subName = item.subject || "সাধারণ";
+                const displayTitle = `${item.quizTitle || 'কুইজ'} | ${subName} | অধ্যায়: ${item.chapter || '১ম'}`;
 
                 div.innerHTML = `
                     <div class="serial-no">${index + 1}</div>
@@ -256,20 +158,17 @@
             modalBody.innerHTML = `
                 <div style="text-align:center; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:15px;">
                     <h2 style="color:var(--primary); margin:0;">${data.quizTitle}</h2>
-                    <p style="margin:5px 0; color:#666;">বিষয়: গণিত | অধ্যায়: ${data.chapter} | তারিখ: ${data.submitTime}</p>
+                    <p style="margin:5px 0; color:#666;">বিষয়: ${data.subject || 'সাধারণ'} | অধ্যায়: ${data.chapter} | তারিখ: ${data.submitTime}</p>
                 </div>
                 <div>${data.fullPageHTML}</div>
             `;
-            
             document.getElementById('detailModal').style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('detailModal').style.display = 'none';
-        }
-
+        function closeModal() { document.getElementById('detailModal').style.display = 'none'; }
+        
         function deleteResult(index) {
-            if(confirm('আপনি কি এই ফলাফলটি মুছে ফেলতে চান?')) {
+            if(confirm('মুছে ফেলতে চান?')) {
                 let archive = JSON.parse(localStorage.getItem('quiz_archive_db') || '[]');
                 archive.splice(index, 1);
                 localStorage.setItem('quiz_archive_db', JSON.stringify(archive));
@@ -278,21 +177,14 @@
         }
 
         function clearAllData() {
-            if(confirm('সাবধান! আপনি কি সব ফলাফল একসাথে মুছে ফেলতে চান?')) {
+            if(confirm('সব মুছে ফেলবেন?')) {
                 localStorage.removeItem('quiz_archive_db');
                 loadArchive();
             }
         }
 
-        window.onclick = function(event) {
-            const modal = document.getElementById('detailModal');
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
-
+        window.onclick = function(event) { if (event.target == document.getElementById('detailModal')) closeModal(); }
         window.onload = loadArchive;
     </script>
-
 </body>
 </html>
