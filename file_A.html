@@ -18,7 +18,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg);
             margin: 0;
-            padding-top: 70px; /* Space for sticky header */
+            padding-top: 70px; 
             padding-bottom: 30px;
             display: flex;
             flex-direction: column;
@@ -116,14 +116,14 @@
 
         .result-info h3 {
             margin: 0;
-            font-size: 15px;
+            font-size: 14px;
             color: var(--primary);
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         .result-info p {
             margin: 4px 0 0;
-            font-size: 12px;
+            font-size: 11.5px;
             color: #7f8c8d;
         }
 
@@ -186,7 +186,7 @@
             color: #95a5a6;
         }
 
-        /* কুইজ ফাইলের ভিতরের স্টাইলগুলো এখানে কাজ করার জন্য */
+        /* কুইজ ফাইলের ভিতরের স্টাইল */
         .res-box { background: #e8f6f3; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--success); }
         .option-btn { border: 1px solid #ddd; padding: 8px; margin: 5px 0; border-radius: 5px; font-size: 13px; position: relative; }
         .correct { background: #d4edda !important; border-color: #27ae60 !important; }
@@ -215,7 +215,6 @@
     </div>
 
     <script>
-        // ডাটাবেস থেকে ডাটা লোড করা
         function loadArchive() {
             const listDiv = document.getElementById('result-list');
             const noDataDiv = document.getElementById('no-data');
@@ -233,10 +232,14 @@
             archive.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'result-item';
+                
+                // বাটন নাম বিন্যাস: কুইজের নাম | বিষয়ের নাম | অধ্যায়
+                const displayTitle = `${item.quizTitle || 'মডেল টেস্ট'} | গণিত | অধ্যায়: ${item.chapter || '১ম'}`;
+
                 div.innerHTML = `
                     <div class="serial-no">${index + 1}</div>
                     <div class="result-info" onclick="viewResult(${index})">
-                        <h3>${item.quizTitle || 'কুইজ'} | ${item.chapter || ''}</h3>
+                        <h3>${displayTitle}</h3>
                         <p>📅 ${item.submitTime} | 🎯 স্কোর: ${item.score}</p>
                     </div>
                     <button class="delete-btn" onclick="deleteResult(${index})">🗑</button>
@@ -245,7 +248,6 @@
             });
         }
 
-        // ফলাফল দেখা
         function viewResult(index) {
             const archive = JSON.parse(localStorage.getItem('quiz_archive_db') || '[]');
             const data = archive[index];
@@ -254,7 +256,7 @@
             modalBody.innerHTML = `
                 <div style="text-align:center; border-bottom:2px solid #eee; padding-bottom:10px; margin-bottom:15px;">
                     <h2 style="color:var(--primary); margin:0;">${data.quizTitle}</h2>
-                    <p style="margin:5px 0; color:#666;">অধ্যায়: ${data.chapter} | তারিখ: ${data.submitTime}</p>
+                    <p style="margin:5px 0; color:#666;">বিষয়: গণিত | অধ্যায়: ${data.chapter} | তারিখ: ${data.submitTime}</p>
                 </div>
                 <div>${data.fullPageHTML}</div>
             `;
@@ -262,12 +264,10 @@
             document.getElementById('detailModal').style.display = 'flex';
         }
 
-        // পপআপ বন্ধ করা
         function closeModal() {
             document.getElementById('detailModal').style.display = 'none';
         }
 
-        // নির্দিষ্ট রেজাল্ট ডিলেট করা
         function deleteResult(index) {
             if(confirm('আপনি কি এই ফলাফলটি মুছে ফেলতে চান?')) {
                 let archive = JSON.parse(localStorage.getItem('quiz_archive_db') || '[]');
@@ -277,7 +277,6 @@
             }
         }
 
-        // সব রেজাল্ট ডিলেট করা
         function clearAllData() {
             if(confirm('সাবধান! আপনি কি সব ফলাফল একসাথে মুছে ফেলতে চান?')) {
                 localStorage.removeItem('quiz_archive_db');
@@ -285,7 +284,6 @@
             }
         }
 
-        // উইন্ডো ক্লিক করলে পপআপ বন্ধ হওয়া
         window.onclick = function(event) {
             const modal = document.getElementById('detailModal');
             if (event.target == modal) {
@@ -293,7 +291,6 @@
             }
         }
 
-        // পেজ লোড হলে ডাটা দেখানো
         window.onload = loadArchive;
     </script>
 
