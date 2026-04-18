@@ -33,15 +33,7 @@
         .offline { background: #ffebee; color: #e74c3c; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .archive-btn { 
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            background: #fff; color: #34495e; border: 1.5px solid #dcdde1; 
-            padding: 8px 15px; border-radius: 10px; font-size: 13px; font-weight: 600;
-            text-decoration: none; margin-bottom: 12px; transition: 0.3s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .archive-btn:active { transform: scale(0.95); background: #f1f2f6; }
+        .archive-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #34495e; border: 1.5px solid #dcdde1; padding: 8px 15px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 12px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -81,9 +73,7 @@
             <div class="info-item"><b>রোল</b> <span id="dispRoll"></span></div>
         </div>
     </div>
-    <a href="file_A.html" class="archive-btn">
-        <span>📊</span> ফলাফল সংগ্রহশালা
-    </a>
+    <a href="file_A.html" class="archive-btn"><span>📊</span> ফলাফল সংগ্রহশালা</a>
     <div id="netStatus"></div>
     <div id="quizList"></div>
     <div id="noQuiz" style="margin-top:30px; color:#95a5a6; border:2px dashed #ddd; padding:20px; border-radius:15px; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
@@ -98,9 +88,9 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-    
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
 
@@ -117,7 +107,9 @@
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
         const pass = document.getElementById('uPass').value.trim();
+
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
+
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
             if (userData && userData.password === pass) {
@@ -144,10 +136,12 @@
     function fetchAssignedQuizzes() {
         const quizListDiv = document.getElementById('quizList');
         const noQuizDiv = document.getElementById('noQuiz');
+
         db.ref('quiz_control').on('value', (snapshot) => {
             const allQuizzes = snapshot.val();
             quizListDiv.innerHTML = '';
             let foundAny = false;
+
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
                     const status = allQuizzes[quizName][currentUser.id];
@@ -192,22 +186,25 @@
             const response = await fetch(fileUrl, { cache: "no-store" });
             const htmlContent = await response.text();
             
+            // কুইজ ফাইল ইঞ্জেক্ট করা
             document.open();
             document.write(htmlContent);
             document.close();
             
-            // কুইজ ফাইলের ভেতর মেসেজ পাঠানো এবং অটো-টাইমার চেক করা
             setupMessageListener(quizName);
 
-            // এক্সট্রা সিকিউরিটি: ফাইল লোড হওয়ার পর কুইজ ফাইলের সাবমিট বাটনকে ট্রিগার করা যদি সময় শেষ হয়ে যায়
+            // কুইজ ফাইলকে টাইমার এবং আগের সেভ করা উত্তর পাঠানো
             setTimeout(() => {
-                 window.postMessage({ 
+                const savedAnswers = localStorage.getItem(`answers_${quizName}_${currentUser.id}`);
+                window.postMessage({ 
                     type: 'SEND_START_TIME', 
                     startTime: quizStartTime,
-                    serverNow: Date.now() 
+                    serverNow: Date.now(),
+                    savedData: savedAnswers ? JSON.parse(savedAnswers) : null
                 }, '*');
-            }, 500);
+            }, 800);
 
+            // ব্যাক বাটন লক
             window.history.pushState(null, null, window.location.href);
             window.onpopstate = function() {
                 window.history.pushState(null, null, window.location.href);
@@ -223,11 +220,18 @@
 
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
+            // কুইজ ফাইল থেকে সিলেকশন সেভ করা (পয়েন্ট ৩ নিশ্চিত করতে)
+            if (e.data.type === 'SAVE_PROGRESS') {
+                localStorage.setItem(`answers_${quizName}_${currentUser.id}`, JSON.stringify(e.data.answers));
+            }
+
             if (e.data.type === 'GET_START_TIME') {
+                const savedAnswers = localStorage.getItem(`answers_${quizName}_${currentUser.id}`);
                 e.source.postMessage({ 
                     type: 'SEND_START_TIME', 
                     startTime: quizStartTime,
-                    serverNow: Date.now() 
+                    serverNow: Date.now(),
+                    savedData: savedAnswers ? JSON.parse(savedAnswers) : null
                 }, '*');
             }
 
@@ -240,18 +244,6 @@
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
-                
-                let extractedSubject = "সাধারণ";
-                const pTag = document.querySelector('.start-screen p');
-                if (pTag) {
-                    const parts = pTag.innerText.split('|');
-                    for (let part of parts) {
-                        if (part.includes('বিষয়')) {
-                            extractedSubject = part.split(':')[1]?.trim() || "সাধারণ";
-                            break;
-                        }
-                    }
-                }
 
                 const fullResult = {
                     ...e.data.data,
@@ -261,23 +253,20 @@
                     section: currentUser.sec,
                     roll: currentUser.roll, 
                     quizName: quizName,
-                    subject: extractedSubject,
                     submitTime: now.toLocaleDateString() + ", " + shortTime,
                     duration: timeTaken,
-                    fullPageHTML: document.getElementById('mainArea')?.innerHTML || ""
+                    // স্ক্রিনশট অনুযায়ী লাল-সবুজ রিপোর্ট সেভ করা
+                    fullPageHTML: e.data.fullHTML || document.body.innerHTML 
                 };
+                
+                // লোকাল স্টোরেজ থেকে সিলেকশন ডাটা মুছে ফেলা (যেহেতু পরীক্ষা শেষ)
+                localStorage.removeItem(`answers_${quizName}_${currentUser.id}`);
                 
                 saveResultLocally(fullResult);
-                syncOfflineResults();
                 saveToArchive(fullResult);
+                syncOfflineResults();
                 
-                window.onpopstate = function() {
-                    location.reload(); 
-                };
-                window.history.pushState(null, null, window.location.href);
-                
-                // সাবমিট হওয়ার সাথে সাথে ড্যাশবোর্ডে ফিরে যাওয়া নিশ্চিত করা
-                setTimeout(() => { location.reload(); }, 1000);
+                setTimeout(() => { location.reload(); }, 1500);
             }
         };
     }
@@ -298,6 +287,7 @@
         if (!navigator.onLine) return;
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
+
         queue.forEach((res, index) => {
             db.ref('quiz_results').push(res).then(() => {
                 db.ref(`quiz_control/${res.quizName}/${res.id}`).set(false);
