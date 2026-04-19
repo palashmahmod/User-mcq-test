@@ -36,8 +36,8 @@
         .archive-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #34495e; border: 1.5px solid #dcdde1; padding: 8px 15px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 12px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
-<body>
 
+<body>
 <div id="login-section" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -88,9 +88,9 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
+
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
 
@@ -107,9 +107,7 @@
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
         const pass = document.getElementById('uPass').value.trim();
-
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
-
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
             if (userData && userData.password === pass) {
@@ -136,12 +134,10 @@
     function fetchAssignedQuizzes() {
         const quizListDiv = document.getElementById('quizList');
         const noQuizDiv = document.getElementById('noQuiz');
-
         db.ref('quiz_control').on('value', (snapshot) => {
             const allQuizzes = snapshot.val();
             quizListDiv.innerHTML = '';
             let foundAny = false;
-
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
                     const status = allQuizzes[quizName][currentUser.id];
@@ -170,30 +166,25 @@
     async function startQuiz(quizName, btn) {
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
-
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
-
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
         }
         
         quizStartTime = startTime;
-
         try {
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${quizName}.html?v=${Date.now()}`;
             const response = await fetch(fileUrl, { cache: "no-store" });
             const htmlContent = await response.text();
             
-            // কুইজ ফাইল ইঞ্জেক্ট করা
             document.open();
             document.write(htmlContent);
             document.close();
             
             setupMessageListener(quizName);
 
-            // কুইজ ফাইলকে টাইমার এবং আগের সেভ করা উত্তর পাঠানো
             setTimeout(() => {
                 const savedAnswers = localStorage.getItem(`answers_${quizName}_${currentUser.id}`);
                 window.postMessage({ 
@@ -204,13 +195,11 @@
                 }, '*');
             }, 800);
 
-            // ব্যাক বাটন লক
             window.history.pushState(null, null, window.location.href);
             window.onpopstate = function() {
                 window.history.pushState(null, null, window.location.href);
                 alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
             };
-
         } catch (error) {
             alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
@@ -220,11 +209,9 @@
 
     function setupMessageListener(quizName) {
         window.onmessage = function(e) {
-            // কুইজ ফাইল থেকে সিলেকশন সেভ করা (পয়েন্ট ৩ নিশ্চিত করতে)
             if (e.data.type === 'SAVE_PROGRESS') {
                 localStorage.setItem(`answers_${quizName}_${currentUser.id}`, JSON.stringify(e.data.answers));
             }
-
             if (e.data.type === 'GET_START_TIME') {
                 const savedAnswers = localStorage.getItem(`answers_${quizName}_${currentUser.id}`);
                 e.source.postMessage({ 
@@ -234,7 +221,6 @@
                     savedData: savedAnswers ? JSON.parse(savedAnswers) : null
                 }, '*');
             }
-
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
@@ -252,20 +238,21 @@
                     class: currentUser.cls, 
                     section: currentUser.sec,
                     roll: currentUser.roll, 
-                    quizName: quizName,
+                    quizName: quizName + ".html",
                     submitTime: now.toLocaleDateString() + ", " + shortTime,
-                    duration: timeTaken,
-                    // স্ক্রিনশট অনুযায়ী লাল-সবুজ রিপোর্ট সেভ করা
+                    duration: "(" + timeTaken + ")",
                     fullPageHTML: e.data.fullHTML || document.body.innerHTML 
                 };
                 
-                // লোকাল স্টোরেজ থেকে সিলেকশন ডাটা মুছে ফেলা (যেহেতু পরীক্ষা শেষ)
                 localStorage.removeItem(`answers_${quizName}_${currentUser.id}`);
                 
                 saveResultLocally(fullResult);
                 saveToArchive(fullResult);
-                syncOfflineResults();
                 
+                // ব্যাক বাটন আনলক করা
+                window.onpopstate = null;
+                
+                syncOfflineResults();
                 setTimeout(() => { location.reload(); }, 1500);
             }
         };
@@ -273,7 +260,14 @@
 
     function saveToArchive(data) {
         let archive = JSON.parse(localStorage.getItem('quiz_archive_db') || '[]');
-        archive.unshift(data);
+        const archiveItem = {
+            quizTitle: "মডেল টেস্ট | " + (data.subject || "সাধারণ") + " | অধ্যায়: " + (data.chapter || "১ম"),
+            dateTime: data.submitTime,
+            scoreText: "স্কোর: " + data.score,
+            wrongQuestions: data.wrongList || "সবগুলো সঠিক!",
+            fullHTML: data.fullPageHTML
+        };
+        archive.unshift(archiveItem);
         localStorage.setItem('quiz_archive_db', JSON.stringify(archive));
     }
 
@@ -287,10 +281,10 @@
         if (!navigator.onLine) return;
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
-
         queue.forEach((res, index) => {
+            const cleanQuizName = res.quizName.replace(".html", "");
             db.ref('quiz_results').push(res).then(() => {
-                db.ref(`quiz_control/${res.quizName}/${res.id}`).set(false);
+                db.ref(`quiz_control/${cleanQuizName}/${res.id}`).set(false);
                 queue.splice(index, 1);
                 localStorage.setItem('pendingResults', JSON.stringify(queue));
             }).catch(e => console.log("Sync Error:", e));
