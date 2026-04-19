@@ -142,7 +142,6 @@
             if (allQuizzes) {
                 for (let quizName in allQuizzes) {
                     const status = allQuizzes[quizName][currentUser.id];
-                    // status number মানে পরীক্ষা চলছে, true মানে নতুন পরীক্ষা, false মানে শেষ।
                     if (status === true || typeof status === 'number') {
                         foundAny = true;
                         createQuizCard(quizName, status);
@@ -171,7 +170,6 @@
         btn.disabled = true;
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
-        
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
@@ -199,9 +197,10 @@
                 }, '*');
             }, 800);
 
+            // ব্যাক বাটন হ্যান্ডলিং: সরাসরি হোম রিলোড
             window.history.pushState({quizActive: true}, null, "");
             window.onpopstate = function() {
-                location.reload(); 
+                window.location.replace(window.location.href);
             };
 
         } catch (error) {
@@ -216,7 +215,6 @@
             if (e.data.type === 'SAVE_PROGRESS') {
                 localStorage.setItem(`answers_${quizName}_${currentUser.id}`, JSON.stringify(e.data.answers));
             }
-            
             if (e.data.type === 'GET_START_TIME') {
                 const savedAnswers = localStorage.getItem(`answers_${quizName}_${currentUser.id}`);
                 e.source.postMessage({ 
@@ -226,9 +224,8 @@
                     savedData: savedAnswers ? JSON.parse(savedAnswers) : null
                 }, '*');
             }
-
             if (e.data.type === 'QUIZ_SUBMITTED') {
-                // ১. সরাসরি Firebase-এ quiz_control স্ট্যাটাস false করে দেওয়া (টাইমার বন্ধের জন্য)
+                // ১. সরাসরি Firebase-এ quiz_control স্ট্যাটাস false করে দেওয়া (সবকিছুর আগে)
                 db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(false);
                 
                 const now = new Date();
@@ -253,13 +250,16 @@
                     fullPageHTML: e.data.fullHTML || document.body.innerHTML 
                 };
                 
-                // ২. লোকাল মেমোরি থেকে প্রগ্রেস মুছে ফেলা
                 localStorage.removeItem(`answers_${quizName}_${currentUser.id}`);
                 
-                // ৩. রেজাল্ট সেভ এবং সিঙ্ক
                 saveResultLocally(fullResult);
                 saveToArchive(fullResult);
                 syncOfflineResults();
+                
+                // ব্যাক বাটন হ্যান্ডলিং আপডেট যাতে ফলাফল থেকে বের হলে রিলোড হয়
+                window.onpopstate = function() {
+                    window.location.replace(window.location.href);
+                };
             }
         };
     }
@@ -287,19 +287,16 @@
         if (!navigator.onLine) return;
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
-
-        // ৪. ডাটাবেজে তথ্য পাঠানোর পর queue আপডেট করা
-        const promises = queue.map((res, index) => {
-            return db.ref('quiz_results').push(res).then(() => {
-                return index;
-            });
+        
+        let promises = queue.map((res, index) => {
+            return db.ref('quiz_results').push(res).then(() => index);
         });
 
-        Promise.all(promises).then((results) => {
-            // সফলভাবে পাঠানো ডাটাগুলো লিস্ট থেকে মুছে ফেলা
-            let newQueue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
-            newQueue = newQueue.filter((_, i) => !results.includes(i));
-            localStorage.setItem('pendingResults', JSON.stringify(newQueue));
+        Promise.all(promises).then((indices) => {
+            let currentQueue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
+            // সফলভাবে পাঠানো ডাটাগুলো কিউ থেকে ফিল্টার করে বাদ দেওয়া
+            let remaining = currentQueue.filter((_, i) => !indices.includes(i));
+            localStorage.setItem('pendingResults', JSON.stringify(remaining));
         }).catch(e => console.log("Sync Error:", e));
     }
 
