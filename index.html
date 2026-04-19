@@ -93,6 +93,7 @@
 
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
+    let activeQuizName = null;
 
     window.onload = () => {
         checkConnectivity();
@@ -164,6 +165,7 @@
     }
 
     async function startQuiz(quizName, btn) {
+        activeQuizName = quizName;
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
@@ -195,11 +197,12 @@
                 }, '*');
             }, 800);
 
-            window.history.pushState(null, null, window.location.href);
+            // ব্যাক বাটন হ্যান্ডলিং: কুইজ বা রেজাল্ট পেইজে ব্যাক টিপলে ড্যাশবোর্ড রিলোড হবে
+            window.history.pushState({quizActive: true}, null, "");
             window.onpopstate = function() {
-                window.history.pushState(null, null, window.location.href);
-                alert("পরীক্ষা চলাকালীন ব্যাক বাটন চাপা নিষেধ।");
+                location.reload(); 
             };
+
         } catch (error) {
             alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
@@ -246,14 +249,12 @@
                 
                 localStorage.removeItem(`answers_${quizName}_${currentUser.id}`);
                 
+                // সাথে সাথে ডাটাবেজে সাবমিট করা যাতে "পরীক্ষা চলছে" স্ট্যাটাস চলে যায়
+                db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(false);
+                
                 saveResultLocally(fullResult);
                 saveToArchive(fullResult);
-                
-                // ব্যাক বাটন আনলক করা
-                window.onpopstate = null;
-                
                 syncOfflineResults();
-                setTimeout(() => { location.reload(); }, 1500);
             }
         };
     }
@@ -284,7 +285,6 @@
         queue.forEach((res, index) => {
             const cleanQuizName = res.quizName.replace(".html", "");
             db.ref('quiz_results').push(res).then(() => {
-                db.ref(`quiz_control/${cleanQuizName}/${res.id}`).set(false);
                 queue.splice(index, 1);
                 localStorage.setItem('pendingResults', JSON.stringify(queue));
             }).catch(e => console.log("Sync Error:", e));
