@@ -36,8 +36,8 @@
         .archive-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #34495e; border: 1.5px solid #dcdde1; padding: 8px 15px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 12px; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
-
 <body>
+
 <div id="login-section" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -55,7 +55,7 @@
         <input type="number" id="uID" placeholder="আইডি নং">
     </div>
     <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
-    <button class="btn" onclick="login()">প্রবেশ করুন</button>
+    <button class="btn" id="loginBtn" onclick="login()">প্রবেশ করুন</button>
 </div>
 
 <div id="dashboard" class="card">
@@ -83,11 +83,13 @@
 <script>
     const GITHUB_USER = "palashmahmod";
     const GITHUB_REPO = "quiz-files";
+
     const firebaseConfig = {
         apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco", 
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
 
@@ -108,16 +110,30 @@
         const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
         const pass = document.getElementById('uPass').value.trim();
+
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
+
+        const btn = document.getElementById('loginBtn');
+        btn.innerHTML = '<span class="loader"></span> যাচাই হচ্ছে...';
+        btn.disabled = true;
+
+        // Firebase থেকে আইডি ও পাসওয়ার্ড ম্যাচিং
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
             if (userData && userData.password === pass) {
+                // আইডি ও পাসওয়ার্ড সঠিক হলে সেশন সেভ করা
                 currentUser = { name, cls, sec, roll, id };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 showDashboard();
             } else {
-                alert("আইডি বা পিন ভুল!");
+                alert("আইডি নম্বর বা পিন সঠিক নয়!");
+                btn.disabled = false;
+                btn.innerText = 'প্রবেশ করুন';
             }
+        }).catch(err => {
+            alert("নেটওয়ার্ক সমস্যা! আবার চেষ্টা করুন।");
+            btn.disabled = false;
+            btn.innerText = 'প্রবেশ করুন';
         });
     }
 
@@ -168,8 +184,10 @@
         activeQuizName = quizName;
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
+
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
+
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
@@ -186,7 +204,6 @@
             document.close();
             
             setupMessageListener(quizName);
-
             setTimeout(() => {
                 const savedAnswers = localStorage.getItem(`answers_${quizName}_${currentUser.id}`);
                 window.postMessage({ 
@@ -197,12 +214,10 @@
                 }, '*');
             }, 800);
 
-            // ব্যাক বাটন হ্যান্ডলিং: সরাসরি হোম রিলোড
             window.history.pushState({quizActive: true}, null, "");
             window.onpopstate = function() {
                 window.location.replace(window.location.href);
             };
-
         } catch (error) {
             alert("ফাইল লোড করা সম্ভব হয়নি।");
             btn.disabled = false;
@@ -225,7 +240,6 @@
                 }, '*');
             }
             if (e.data.type === 'QUIZ_SUBMITTED') {
-                // ১. সরাসরি Firebase-এ quiz_control স্ট্যাটাস false করে দেওয়া (সবকিছুর আগে)
                 db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(false);
                 
                 const now = new Date();
@@ -237,6 +251,7 @@
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
 
+                // ইউজারের সমস্ত তথ্য সহ রেজাল্ট অবজেক্ট তৈরি
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
@@ -251,12 +266,10 @@
                 };
                 
                 localStorage.removeItem(`answers_${quizName}_${currentUser.id}`);
-                
                 saveResultLocally(fullResult);
                 saveToArchive(fullResult);
                 syncOfflineResults();
                 
-                // ব্যাক বাটন হ্যান্ডলিং আপডেট যাতে ফলাফল থেকে বের হলে রিলোড হয়
                 window.onpopstate = function() {
                     window.location.replace(window.location.href);
                 };
@@ -288,16 +301,13 @@
         let queue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
         if (queue.length === 0) return;
         
-        let promises = queue.map((res, index) => {
-            return db.ref('quiz_results').push(res).then(() => index);
+        queue.forEach((res, index) => {
+            db.ref('quiz_results').push(res).then(() => {
+                let currentQueue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
+                currentQueue.splice(index, 1);
+                localStorage.setItem('pendingResults', JSON.stringify(currentQueue));
+            }).catch(e => console.log("Sync Error:", e));
         });
-
-        Promise.all(promises).then((indices) => {
-            let currentQueue = JSON.parse(localStorage.getItem('pendingResults') || '[]');
-            // সফলভাবে পাঠানো ডাটাগুলো কিউ থেকে ফিল্টার করে বাদ দেওয়া
-            let remaining = currentQueue.filter((_, i) => !indices.includes(i));
-            localStorage.setItem('pendingResults', JSON.stringify(remaining));
-        }).catch(e => console.log("Sync Error:", e));
     }
 
     function checkConnectivity() {
