@@ -45,15 +45,7 @@
     </div>
     <hr class="divider">
     <h2 style="color: var(--primary); margin-top: 0;">শিক্ষার্থী প্রবেশদ্বার</h2>
-    <input type="text" id="uName" placeholder="সম্পূর্ণ নাম">
-    <div style="display: flex; gap: 10px;">
-        <input type="text" id="uClass" placeholder="শ্রেণি">
-        <input type="text" id="uSection" placeholder="শাখা">
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <input type="number" id="uRoll" placeholder="রোল নং">
-        <input type="number" id="uID" placeholder="আইডি নং">
-    </div>
+    <input type="number" id="uID" placeholder="আইডি নং লিখুন">
     <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
     <button class="btn" id="loginBtn" onclick="login()">প্রবেশ করুন</button>
 </div>
@@ -83,16 +75,13 @@
 <script>
     const GITHUB_USER = "palashmahmod";
     const GITHUB_REPO = "quiz-files";
-
     const firebaseConfig = {
         apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco", 
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
     let quizStartTime; 
     let activeQuizName = null;
@@ -104,34 +93,34 @@
     };
 
     function login() {
-        const name = document.getElementById('uName').value.trim();
-        const cls = document.getElementById('uClass').value.trim();
-        const sec = document.getElementById('uSection').value.trim();
-        const roll = document.getElementById('uRoll').value.trim();
         const id = document.getElementById('uID').value.trim();
         const pass = document.getElementById('uPass').value.trim();
-
-        if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
-
+        if(!id || !pass) return alert("আইডি এবং পিন পাসওয়ার্ড দিন।");
+        
         const btn = document.getElementById('loginBtn');
         btn.innerHTML = '<span class="loader"></span> যাচাই হচ্ছে...';
         btn.disabled = true;
 
-        // Firebase থেকে আইডি ও পাসওয়ার্ড ম্যাচিং
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
             if (userData && userData.password === pass) {
-                // আইডি ও পাসওয়ার্ড সঠিক হলে সেশন সেভ করা
-                currentUser = { name, cls, sec, roll, id };
+                // ডাটাবেজ থেকে সব তথ্য অটোমেটিক নেওয়া হচ্ছে
+                currentUser = { 
+                    name: userData.name || "অজানা", 
+                    cls: userData.class || "N/A", 
+                    sec: userData.section || "N/A", 
+                    roll: userData.roll || "0", 
+                    id: id 
+                };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 showDashboard();
             } else {
-                alert("আইডি নম্বর বা পিন সঠিক নয়!");
+                alert("আইডি নম্বর বা পিন সঠিক নয়!");
                 btn.disabled = false;
                 btn.innerText = 'প্রবেশ করুন';
             }
         }).catch(err => {
-            alert("নেটওয়ার্ক সমস্যা! আবার চেষ্টা করুন।");
+            alert("নেটওয়ার্ক সমস্যা!");
             btn.disabled = false;
             btn.innerText = 'প্রবেশ করুন';
         });
@@ -185,9 +174,9 @@
         btn.innerHTML = '<span class="loader"></span> লোড হচ্ছে...';
         btn.disabled = true;
 
+        // বাটনে ক্লিক করার পর কেবল স্ট্যাটাস আপডেট হবে
         const snap = await db.ref(`quiz_control/${quizName}/${currentUser.id}`).once('value');
         let startTime = snap.val();
-
         if (startTime === true) {
             startTime = Date.now();
             await db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(startTime);
@@ -241,7 +230,6 @@
             }
             if (e.data.type === 'QUIZ_SUBMITTED') {
                 db.ref(`quiz_control/${quizName}/${currentUser.id}`).set(false);
-                
                 const now = new Date();
                 const diff = Math.floor((Date.now() - quizStartTime) / 1000);
                 const timeTaken = Math.floor(diff / 60) + ":" + (diff % 60 < 10 ? '0' : '') + (diff % 60);
@@ -251,7 +239,6 @@
                 hours = hours % 12 || 12;
                 const shortTime = hours + ":" + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes() + " " + ampm;
 
-                // ইউজারের সমস্ত তথ্য সহ রেজাল্ট অবজেক্ট তৈরি
                 const fullResult = {
                     ...e.data.data,
                     id: currentUser.id, 
