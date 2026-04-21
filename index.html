@@ -55,11 +55,7 @@
 <div id="dashboard" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
-        <div class="profile-info">
-            <h2>Palash Mahmod</h2>
-            <p>BSC(SCIENCE), MSC(BOTANY)</p>
-            <p>Mob: 01757935522</p>
-        </div>
+        <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
     </div>
     <hr class="divider">
     <div class="profile-header">
@@ -90,27 +86,25 @@
     window.onload = () => { if(currentUser) showDashboard(); };
 
     function login() {
-        const name = document.getElementById('uName').value.trim();
-        const cls = document.getElementById('uClass').value.trim();
-        const sec = document.getElementById('uSection').value.trim();
-        const roll = document.getElementById('uRoll').value.trim();
-        const id = document.getElementById('uID').value.trim();
-        const pass = document.getElementById('uPass').value.trim();
+        const fields = ['uName', 'uClass', 'uSection', 'uRoll', 'uID', 'uPass'];
+        const values = {};
+        for(let f of fields) {
+            values[f] = document.getElementById(f).value.trim();
+            if(!values[f]) return alert("সবগুলো বক্স পূরণ করুন।");
+        }
 
-        if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
-
-        db.ref('users/' + id).once('value', (snapshot) => {
-            const userData = snapshot.val();
-            if (userData && (userData.password == pass || userData.pin == pass)) {
-                currentUser = { name, cls, sec, roll, id };
+        db.ref('users/' + values.uID).once('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && (data.password == values.uPass || data.pin == values.uPass)) {
+                currentUser = { name: values.uName, cls: values.uClass, sec: values.uSection, roll: values.uRoll, id: values.uID };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 
-                // কুইজ ফাইলের জন্য প্রয়োজনীয় ডেটা সেভ
-                localStorage.setItem("uName", name);
-                localStorage.setItem("uClass", cls);
-                localStorage.setItem("uSection", sec);
-                localStorage.setItem("uRoll", roll);
-                localStorage.setItem("uId", id);
+                // কুইজ ফাইলের জন্য লোকাল স্টোরেজে ডেটা সেট
+                localStorage.setItem("uName", values.uName);
+                localStorage.setItem("uClass", values.uClass);
+                localStorage.setItem("uSection", values.uSection);
+                localStorage.setItem("uRoll", values.uRoll);
+                localStorage.setItem("uId", values.uID);
 
                 showDashboard();
             } else {
@@ -132,19 +126,19 @@
 
     function fetchQuizzes() {
         const listDiv = document.getElementById('quizList');
+        // Real-time listener: file_C থেকে অফ করলে এখানে সাথে সাথে আপডেট হবে
         db.ref('quiz_list').on('value', (snapshot) => {
             listDiv.innerHTML = '';
             let hasQuiz = false;
             const data = snapshot.val();
             if(data) {
                 for(let key in data) {
-                    // লজিক: শুধুমাত্র স্ট্যাটাস "on" থাকলে দেখাবে
                     if(data[key].status === "on") {
                         hasQuiz = true;
                         const card = document.createElement('div');
                         card.className = 'quiz-card';
                         card.innerHTML = `
-                            <span class="status-badge">নতুন পরীক্ষা</span>
+                            <span class="status-badge">অনলাইন পরীক্ষা</span>
                             <div style="font-weight:bold; color:var(--primary);">${data[key].title}</div>
                             <div style="font-size:12px; color:#666; margin-bottom:10px;">বিষয়: ${data[key].sub} | শ্রেণি: ${data[key].cls}</div>
                             <button class="btn" onclick="openQuiz('${data[key].fileName}')">পরীক্ষা শুরু করুন</button>
@@ -157,22 +151,12 @@
         });
     }
 
-    async function openQuiz(fileName) {
-        // 404 সমস্যা সমাধানের জন্য সরাসরি GitHub Raw লিঙ্ক ব্যবহার
+    function openQuiz(fileName) {
+        // GitHub Pages এর 404 এড়িয়ে সরাসরি Raw লিঙ্ক ব্যবহার করে রিডাইরেক্ট
         const user = "palashmahmod";
         const repo = "quiz-files";
-        const fileUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/${fileName}.html`;
-        
-        try {
-            const response = await fetch(fileUrl);
-            if (!response.ok) throw new Error();
-            const html = await response.text();
-            document.open();
-            document.write(html);
-            document.close();
-        } catch (e) {
-            alert("ফাইলটি লোড করা সম্ভব হচ্ছে না। GitHub-এ ফাইলটি সঠিক আছে কি না চেক করুন।");
-        }
+        const url = `https://${user}.github.io/${repo}/${fileName}.html`;
+        window.location.href = url;
     }
 
     function logout() {
