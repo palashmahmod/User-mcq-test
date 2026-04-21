@@ -7,9 +7,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f0f2f5; --success: #27ae60; --white: #ffffff; }
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f0f2f5; --success: #27ae60; --white: #white; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .card { width: 95%; max-width: 450px; background: var(--white); padding: 25px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
+        .card { width: 95%; max-width: 450px; background: #ffffff; padding: 25px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
         .header-profile { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; text-align: left; }
         .profile-pic { width: 80px; height: 106px; border: 1px solid #000; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
         .profile-info { color: var(--primary); line-height: 1.4; text-align: left; flex-grow: 1; }
@@ -78,10 +78,8 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
 
     window.onload = () => { if(currentUser) showDashboard(); };
@@ -93,19 +91,11 @@
             values[f] = document.getElementById(f).value.trim();
             if(!values[f]) return alert("সবগুলো বক্স পূরণ করুন।");
         }
-
         db.ref('users/' + values.uID).once('value', (snapshot) => {
             const data = snapshot.val();
             if (data && (data.password == values.uPass || data.pin == values.uPass)) {
                 currentUser = { name: values.uName, cls: values.uClass, sec: values.uSection, roll: values.uRoll, id: values.uID };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
-                
-                localStorage.setItem("uName", values.uName);
-                localStorage.setItem("uClass", values.uClass);
-                localStorage.setItem("uSection", values.uSection);
-                localStorage.setItem("uRoll", values.uRoll);
-                localStorage.setItem("uId", values.uID);
-
                 showDashboard();
             } else {
                 alert("আইডি বা পিন ভুল!");
@@ -126,12 +116,10 @@
 
     function fetchQuizzes() {
         const listDiv = document.getElementById('quizList');
-        
         db.ref('quiz_control').on('value', (snapshot) => {
             listDiv.innerHTML = '';
             let hasQuiz = false;
             const data = snapshot.val();
-            
             if(data) {
                 for(let key in data) {
                     const studentStatus = data[key][currentUser.id];
@@ -152,27 +140,50 @@
         });
     }
 
-    // চূড়ান্ত এবং সংশোধিত openQuiz ফাংশন
     function openQuiz(fileName) {
         const user = "palashmahmod";
         const repo = "quiz-files";
-        
-        // main ব্রাঞ্চ ব্যবহার করে সরাসরি Raw লিঙ্ক তৈরি করা হয়েছে
         const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/${fileName}.html`;
-
+        
         fetch(rawUrl)
             .then(response => {
                 if (response.ok) return response.text();
                 throw new Error('Not Found');
             })
             .then(html => {
-                // কুইজ ফাইলটি ওপেন করার সাথে সাথে স্টুডেন্টের তথ্য ইনজেক্ট করা হবে
+                // কুইজ ফাইলের ভিতরে ডেটা পাঠানোর জন্য স্ক্রিপ্ট ইনজেকশন
+                const injectionScript = `
+                <script>
+                    window.onload = function() {
+                        // শিক্ষার্থীর তথ্য অটো-ফিলাপ
+                        if(document.getElementById('studentName')) document.getElementById('studentName').innerText = "${currentUser.name}";
+                        if(document.getElementById('studentRoll')) document.getElementById('studentRoll').innerText = "${currentUser.roll}";
+                        if(document.getElementById('studentClass')) document.getElementById('studentClass').innerText = "${currentUser.cls}";
+                        if(document.getElementById('studentSection')) document.getElementById('studentSection').innerText = "${currentUser.sec}";
+                        
+                        // ইনপুট ফিল্ড থাকলে সেগুলোতেও ভ্যালু সেট করা
+                        if(document.querySelector('input[name="name"]')) document.querySelector('input[name="name"]').value = "${currentUser.name}";
+                        if(document.querySelector('input[name="roll"]')) document.querySelector('input[name="roll"]').value = "${currentUser.roll}";
+
+                        // ব্যাক বাটন যুক্ত করা যদি না থাকে
+                        if(!document.getElementById('backBtn')){
+                            let bBtn = document.createElement('button');
+                            bBtn.innerHTML = "ব্যাক";
+                            bBtn.className = "btn"; 
+                            bBtn.style.background = "#95a5a6";
+                            bBtn.style.marginTop = "10px";
+                            bBtn.onclick = function() { location.reload(); };
+                            document.querySelector('.card').appendChild(bBtn);
+                        }
+                    };
+                <\/script>`;
+
                 document.open();
-                document.write(html);
+                document.write(html + injectionScript);
                 document.close();
             })
             .catch(err => {
-                alert("ত্রুটি: '" + fileName + ".html' ফাইলটি গিটহাবের main ব্রাঞ্চে পাওয়া যাচ্ছে না।");
+                alert("ত্রুটি: '" + fileName + ".html' ফাইলটি পাওয়া যাচ্ছে না।");
             });
     }
 
