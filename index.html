@@ -78,6 +78,7 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
 
@@ -99,7 +100,6 @@
                 currentUser = { name: values.uName, cls: values.uClass, sec: values.uSection, roll: values.uRoll, id: values.uID };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 
-                // কুইজ ফাইলের জন্য লোকাল স্টোরেজে ডেটা সেট
                 localStorage.setItem("uName", values.uName);
                 localStorage.setItem("uClass", values.uClass);
                 localStorage.setItem("uSection", values.uSection);
@@ -126,22 +126,28 @@
 
     function fetchQuizzes() {
         const listDiv = document.getElementById('quizList');
-        // Real-time listener: file_C থেকে অফ করলে এখানে সাথে সাথে আপডেট হবে
-        db.ref('quiz_list').on('value', (snapshot) => {
+        
+        // file_C-এর লজিক অনুযায়ী quiz_control পাথ থেকে ডেটা রিড করা হচ্ছে
+        db.ref('quiz_control').on('value', (snapshot) => {
             listDiv.innerHTML = '';
             let hasQuiz = false;
             const data = snapshot.val();
+            
             if(data) {
+                // এখানে 'key' হলো ফাইলের নাম (যেমন: 601)
                 for(let key in data) {
-                    if(data[key].status === "on") {
+                    const studentStatus = data[key][currentUser.id];
+                    
+                    // যদি এই নির্দিষ্ট শিক্ষার্থীর জন্য কুইজটি 'true' (On) থাকে
+                    if(studentStatus === true) {
                         hasQuiz = true;
                         const card = document.createElement('div');
                         card.className = 'quiz-card';
                         card.innerHTML = `
-                            <span class="status-badge">অনলাইন পরীক্ষা</span>
-                            <div style="font-weight:bold; color:var(--primary);">${data[key].title}</div>
-                            <div style="font-size:12px; color:#666; margin-bottom:10px;">বিষয়: ${data[key].sub} | শ্রেণি: ${data[key].cls}</div>
-                            <button class="btn" onclick="openQuiz('${data[key].fileName}')">পরীক্ষা শুরু করুন</button>
+                            <span class="status-badge">লাইভ পরীক্ষা</span>
+                            <div style="font-weight:bold; color:var(--primary);">পরীক্ষার কোড: ${key}</div>
+                            <div style="font-size:12px; color:#666; margin-bottom:10px;">ফাইল নাম: ${key}.html</div>
+                            <button class="btn" onclick="openQuiz('${key}')">পরীক্ষা শুরু করুন</button>
                         `;
                         listDiv.appendChild(card);
                     }
@@ -152,9 +158,9 @@
     }
 
     function openQuiz(fileName) {
-        // GitHub Pages এর 404 এড়িয়ে সরাসরি Raw লিঙ্ক ব্যবহার করে রিডাইরেক্ট
         const user = "palashmahmod";
         const repo = "quiz-files";
+        // সরাসরি GitHub Pages লিঙ্কে পাঠানো হচ্ছে
         const url = `https://${user}.github.io/${repo}/${fileName}.html`;
         window.location.href = url;
     }
