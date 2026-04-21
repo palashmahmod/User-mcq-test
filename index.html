@@ -22,10 +22,8 @@
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 14px; }
         .btn { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
         #dashboard { display: none; }
-        .quiz-card { background: #fff; padding: 15px; border-radius: 18px; margin-top: 15px; border: 1px solid #e1e8ed; text-align: left; position: relative; }
+        .quiz-card { background: #fff; padding: 15px; border-radius: 18px; margin-top: 15px; border: 1px solid #e1e8ed; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 5px; background: #e8f5e9; color: var(--success); }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -41,7 +39,6 @@
     </div>
     <hr class="divider">
     <h2 style="color: var(--primary); margin: 0 0 15px 0;">শিক্ষার্থী প্রবেশদ্বার</h2>
-    
     <input type="text" id="uName" placeholder="সম্পূর্ণ নাম">
     <div style="display: flex; gap: 10px;">
         <input type="text" id="uClass" placeholder="শ্রেণি">
@@ -52,20 +49,19 @@
         <input type="number" id="uID" placeholder="আইডি নং">
     </div>
     <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
-    <button class="btn" id="loginBtn" onclick="login()">প্রবেশ করুন</button>
+    <button class="btn" onclick="login()">প্রবেশ করুন</button>
 </div>
 
 <div id="dashboard" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
         <div class="profile-info">
-            <h2 id="dispProfileName">Palash Mahmod</h2>
+            <h2>Palash Mahmod</h2>
             <p>BSC(SCIENCE), MSC(BOTANY)</p>
             <p>Mob: 01757935522</p>
         </div>
     </div>
     <hr class="divider">
-    
     <div class="profile-header">
         <h3 id="welcomeMsg" style="margin:0 0 10px 0;">স্বাগতম</h3>
         <div class="info-grid">
@@ -75,15 +71,12 @@
             <div class="info-item"><b>রোল</b> <span id="dispRoll"></span></div>
         </div>
     </div>
-
     <div id="quizList"></div>
     <div id="noQuiz" style="margin-top:20px; color:#95a5a6; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
-
     <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:25px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
 </div>
 
 <script>
-    // Firebase Config (আপনার দেওয়া তথ্য অনুযায়ী)
     const firebaseConfig = {
         apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco", 
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
@@ -94,9 +87,7 @@
 
     let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
 
-    window.onload = () => {
-        if(currentUser) showDashboard();
-    };
+    window.onload = () => { if(currentUser) showDashboard(); };
 
     function login() {
         const name = document.getElementById('uName').value.trim();
@@ -108,19 +99,13 @@
 
         if(!name || !cls || !sec || !roll || !id || !pass) return alert("সবগুলো বক্স পূরণ করুন।");
 
-        const btn = document.getElementById('loginBtn');
-        btn.innerHTML = '<span class="loader"></span> যাচাই হচ্ছে...';
-        btn.disabled = true;
-
-        // শুধু আইডি ও পিন যাচাই
         db.ref('users/' + id).once('value', (snapshot) => {
             const userData = snapshot.val();
-            // userData.password বা userData.pin যেকোনো একটি চেক করবে (আপনার file_A অনুযায়ী)
             if (userData && (userData.password == pass || userData.pin == pass)) {
                 currentUser = { name, cls, sec, roll, id };
                 localStorage.setItem('loggedUser', JSON.stringify(currentUser));
                 
-                // কুইজ ফাইলের জন্য লোকাল স্টোরেজে আলাদা কি (Key) সেভ করা
+                // কুইজ ফাইলের জন্য প্রয়োজনীয় ডেটা সেভ
                 localStorage.setItem("uName", name);
                 localStorage.setItem("uClass", cls);
                 localStorage.setItem("uSection", sec);
@@ -129,48 +114,39 @@
 
                 showDashboard();
             } else {
-                alert("আইডি নম্বর বা পিন সঠিক নয়!");
-                btn.disabled = false;
-                btn.innerText = 'প্রবেশ করুন';
+                alert("আইডি বা পিন ভুল!");
             }
-        }).catch(err => {
-            alert("নেটওয়ার্ক সমস্যা!");
-            btn.disabled = false;
-            btn.innerText = 'প্রবেশ করুন';
         });
     }
 
     function showDashboard() {
         document.getElementById('login-section').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
-        
         document.getElementById('welcomeMsg').innerText = currentUser.name;
         document.getElementById('dispID').innerText = currentUser.id;
         document.getElementById('dispClass').innerText = currentUser.cls;
         document.getElementById('dispSection').innerText = currentUser.sec;
         document.getElementById('dispRoll').innerText = currentUser.roll;
-
         fetchQuizzes();
     }
 
     function fetchQuizzes() {
         const listDiv = document.getElementById('quizList');
-        // file_B তে ব্যবহৃত quiz_list পাথ থেকে ডেটা আনা
         db.ref('quiz_list').on('value', (snapshot) => {
             listDiv.innerHTML = '';
-            const data = snapshot.val();
             let hasQuiz = false;
-
+            const data = snapshot.val();
             if(data) {
                 for(let key in data) {
+                    // লজিক: শুধুমাত্র স্ট্যাটাস "on" থাকলে দেখাবে
                     if(data[key].status === "on") {
                         hasQuiz = true;
                         const card = document.createElement('div');
                         card.className = 'quiz-card';
                         card.innerHTML = `
-                            <span class="status-badge">অনলাইন পরীক্ষা</span>
-                            <div style="font-weight:bold; color:var(--primary); margin-bottom:10px;">${data[key].title}</div>
-                            <div style="font-size:12px; color:#666;">বিষয়: ${data[key].sub} | শ্রেণি: ${data[key].cls}</div>
+                            <span class="status-badge">নতুন পরীক্ষা</span>
+                            <div style="font-weight:bold; color:var(--primary);">${data[key].title}</div>
+                            <div style="font-size:12px; color:#666; margin-bottom:10px;">বিষয়: ${data[key].sub} | শ্রেণি: ${data[key].cls}</div>
                             <button class="btn" onclick="openQuiz('${data[key].fileName}')">পরীক্ষা শুরু করুন</button>
                         `;
                         listDiv.appendChild(card);
@@ -181,19 +157,28 @@
         });
     }
 
-    function openQuiz(fileName) {
-        // GitHub থেকে ফাইলটি সরাসরি ওপেন করা
+    async function openQuiz(fileName) {
+        // 404 সমস্যা সমাধানের জন্য সরাসরি GitHub Raw লিঙ্ক ব্যবহার
         const user = "palashmahmod";
         const repo = "quiz-files";
-        window.location.href = `https://${user}.github.io/${repo}/${fileName}.html`;
+        const fileUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/${fileName}.html`;
+        
+        try {
+            const response = await fetch(fileUrl);
+            if (!response.ok) throw new Error();
+            const html = await response.text();
+            document.open();
+            document.write(html);
+            document.close();
+        } catch (e) {
+            alert("ফাইলটি লোড করা সম্ভব হচ্ছে না। GitHub-এ ফাইলটি সঠিক আছে কি না চেক করুন।");
+        }
     }
 
     function logout() {
-        if (prompt("লগআউট পাসওয়ার্ড দিন:") === "pm5522") {
-            localStorage.clear(); // সব তথ্য মুছে ফেলা
+        if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
+            localStorage.clear();
             location.reload();
-        } else {
-            alert("ভুল পাসওয়ার্ড!");
         }
     }
 </script>
