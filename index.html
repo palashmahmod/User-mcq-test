@@ -3,186 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>শিক্ষার্থী ড্যাশবোর্ড - স্মার্ট কুইজ</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <title>Admin MCQ Generator - Palash Mahmod</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], processEscapes: true },
+            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+            chtml: { mtextInheritFont: true }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f0f2f5; --success: #27ae60; --white: #ffffff; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .card { width: 95%; max-width: 450px; background: #ffffff; padding: 25px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
-        .header-profile { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; text-align: left; }
-        .profile-pic { width: 80px; height: 106px; border: 1px solid #000; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
-        .profile-info { color: var(--primary); line-height: 1.4; text-align: left; flex-grow: 1; }
-        .profile-info h2 { margin: 0; font-size: 20px; font-weight: 900; color: #1a202c; }
-        .profile-info p { margin: 1px 0; font-size: 13px; font-weight: 600; color: #4a5568; }
-        .divider { height: 1.5px; background-color: #000; margin: 10px 0 20px 0; border: none; }
-        .profile-header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 20px; border-radius: 20px; margin-bottom: 20px; text-align: left; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.9rem; }
-        .info-item b { opacity: 0.8; font-weight: normal; font-size: 0.8rem; display: block; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 14px; }
-        .btn { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
-        #dashboard { display: none; }
-        .quiz-card { background: #fff; padding: 15px; border-radius: 18px; margin-top: 15px; border: 1px solid #e1e8ed; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 5px; background: #e8f5e9; color: var(--success); }
+        :root { --primary: #2c3e50; --accent: #3498db; --cream: #FFFBF0; --danger: #e74c3c; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--cream); margin: 0; padding-top: 110px; display: flex; justify-content: center; }
+        .sticky-header { position: fixed; top: 0; left: 0; width: 100%; background: var(--primary); color: white; padding: 10px 0; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .nav-content { max-width: 850px; margin: auto; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 10px; }
+        .btn-nav { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; text-decoration: none; display: flex; align-items: center; gap: 5px; }
+        .container { width: 95%; max-width: 800px; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 50px; }
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f1f5f9; padding: 20px; border-radius: 15px; margin-bottom: 25px; }
+        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; font-size: 14px; font-family: inherit; }
+        .q-card { border: 2px solid #e2e8f0; padding: 25px; border-radius: 18px; margin-bottom: 25px; position: relative; }
+        .btn-del { position: absolute; top: 15px; right: 15px; background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .opt-row { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+        .btn-add-q { width: 100%; padding: 18px; background: var(--accent); color: white; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .loader-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .reset-link { font-size: 10px; color: #eee; cursor: pointer; text-decoration: underline; opacity: 0.8; }
+        .stimulus-box { background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 10px; border-left: 4px solid var(--accent); }
+        @media (max-width: 600px) { body { padding-top: 140px; } .config-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
+<div id="loader" class="loader-overlay"><i class="fas fa-spinner fa-spin"></i> &nbsp; প্রসেসিং হচ্ছে...</div>
 
-<div id="login-section" class="card">
-    <div class="header-profile">
-        <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
-        <div class="profile-info">
-            <h2>Palash Mahmod</h2>
-            <p>BSC(SCIENCE), MSC(BOTANY)</p>
-            <p>Mob: 01757935522</p>
+<div class="sticky-header">
+    <div class="nav-content">
+        <a href="index.html" class="btn-nav"><i class="fas fa-arrow-left"></i> ব্যাক</a>
+        <button class="btn-nav" onclick="saveToStorage(true)"><i class="fas fa-save"></i> সেইভ</button>
+        <button class="btn-nav" onclick="generateFile()"><i class="fas fa-download"></i> ডাউনলোড</button>
+        <button class="btn-nav" style="background:var(--success)" onclick="uploadToGithub()">
+            <i class="fab fa-github"></i> গিটহাব ও ফায়ারবেস
+        </button>
+        <button class="btn-nav" style="background:var(--danger)" onclick="clearAllQuestions()">
+            <i class="fas fa-trash-alt"></i> সব মুছুন
+        </button>
+        <div class="btn-nav" style="background:#444">
+             <i class="fas fa-key"></i> <span class="reset-link" onclick="resetToken()">রিসেট</span>
         </div>
     </div>
-    <hr class="divider">
-    <h2 style="color: var(--primary); margin: 0 0 15px 0;">শিক্ষার্থী প্রবেশদ্বার</h2>
-    <input type="text" id="uName" placeholder="সম্পূর্ণ নাম">
-    <div style="display: flex; gap: 10px;">
-        <input type="text" id="uClass" placeholder="শ্রেণি">
-        <input type="text" id="uSection" placeholder="শাখা">
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <input type="number" id="uRoll" placeholder="রোল নং">
-        <input type="number" id="uID" placeholder="আইডি নং">
-    </div>
-    <input type="number" id="uPass" placeholder="পিন পাসওয়ার্ড">
-    <button class="btn" onclick="login()">প্রবেশ করুন</button>
 </div>
 
-<div id="dashboard" class="card">
-    <div class="header-profile">
-        <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
-        <div class="profile-info"><h2>Palash Mahmod</h2><p>BSC(SCIENCE), MSC(BOTANY)</p><p>Mob: 01757935522</p></div>
+<div class="container">
+    <div class="config-grid">
+        <div><label>পরীক্ষার নাম:</label><input type="text" id="quizTitle" placeholder="উদা: সাপ্তাহিক পরীক্ষা"></div>
+        <div><label>শ্রেণি:</label><input type="text" id="quizClass" placeholder="শ্রেণি"></div>
+        <div><label>বিষয়:</label><input type="text" id="quizSubject" placeholder="বিষয়"></div>
+        <div><label>অধ্যায়ের নাম:</label><input type="text" id="quizChapter" placeholder="অধ্যায়"></div>
+        <div><label>পূর্ণমান:</label><input type="text" id="quizTotalMarks" placeholder="পূর্ণমান"></div>
+        <div><label>সময় (মি:):</label><input type="text" id="quizTime" placeholder="সময়"></div>
+        <div><label>ফাইল নাম:</label><input type="text" id="fileName" placeholder="যেমন: 601"></div>
     </div>
-    <hr class="divider">
-    <div class="profile-header">
-        <h3 id="welcomeMsg" style="margin:0 0 10px 0;">স্বাগতম</h3>
-        <div class="info-grid">
-            <div class="info-item"><b>আইডি নং</b> <span id="dispID"></span></div>
-            <div class="info-item"><b>শ্রেণি</b> <span id="dispClass"></span></div>
-            <div class="info-item"><b>শাখা</b> <span id="dispSection"></span></div>
-            <div class="info-item"><b>রোল</b> <span id="dispRoll"></span></div>
-        </div>
-    </div>
-    <div id="quizList"></div>
-    <div id="noQuiz" style="margin-top:20px; color:#95a5a6; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
-    <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:25px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
+    <div id="questions-area"></div>
+    <button class="btn-add-q" onclick="addQuestion()">+ নতুন প্রশ্ন যোগ করুন</button>
 </div>
 
 <script>
     const firebaseConfig = {
-        apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco", 
-        databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
-        projectId: "quiz-storage-d8707"
+        apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco",
+        databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com",
+        projectId: "quiz-storage-d8707",
     };
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.database();
-    let currentUser = JSON.parse(localStorage.getItem('loggedUser'));
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const GITHUB_USER = "palashmahmod";
+    const GITHUB_REPO = "quiz-files";
 
-    window.onload = () => { if(currentUser) showDashboard(); };
-
-    function login() {
-        const fields = ['uName', 'uClass', 'uSection', 'uRoll', 'uID', 'uPass'];
-        const values = {};
-        for(let f of fields) {
-            values[f] = document.getElementById(f).value.trim();
-            if(!values[f]) return alert("সবগুলো বক্স পূরণ করুন।");
+    function getGithubToken() {
+        let token = localStorage.getItem('my_gh_token');
+        if (!token || token === "null") {
+            token = prompt("আপনার GitHub Personal Access Token (PAT) পেস্ট করুন:");
+            if (token && token.trim().length > 10) {
+                localStorage.setItem('my_gh_token', token.trim());
+            } else { return null; }
         }
-        db.ref('users/' + values.uID).once('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data && (data.password == values.uPass || data.pin == values.uPass)) {
-                currentUser = { name: values.uName, cls: values.uClass, sec: values.uSection, roll: values.uRoll, id: values.uID };
-                localStorage.setItem('loggedUser', JSON.stringify(currentUser));
-                showDashboard();
-            } else {
-                alert("আইডি বা পিন ভুল!");
-            }
-        });
+        return token;
     }
 
-    function showDashboard() {
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('welcomeMsg').innerText = currentUser.name;
-        document.getElementById('dispID').innerText = currentUser.id;
-        document.getElementById('dispClass').innerText = currentUser.cls;
-        document.getElementById('dispSection').innerText = currentUser.sec;
-        document.getElementById('dispRoll').innerText = currentUser.roll;
-        fetchQuizzes();
+    function resetToken() {
+        localStorage.removeItem('my_gh_token');
+        alert("টোকেন মুছে ফেলা হয়েছে।");
     }
 
-    function fetchQuizzes() {
-        const listDiv = document.getElementById('quizList');
-        db.ref('quiz_control').on('value', (snapshot) => {
-            listDiv.innerHTML = '';
-            let hasQuiz = false;
-            const data = snapshot.val();
-            if(data) {
-                for(let key in data) {
-                    const studentStatus = data[key][currentUser.id];
-                    if(studentStatus === true) {
-                        hasQuiz = true;
-                        const card = document.createElement('div');
-                        card.className = 'quiz-card';
-                        card.innerHTML = `
-                            <span class="status-badge">লাইভ পরীক্ষা</span>
-                            <div style="font-weight:bold; color:var(--primary);">পরীক্ষার কোড: ${key}</div>
-                            <button class="btn" onclick="openQuiz('${key}')">পরীক্ষা শুরু করুন</button>
-                        `;
-                        listDiv.appendChild(card);
-                    }
-                }
-            }
-            document.getElementById('noQuiz').style.display = hasQuiz ? 'none' : 'block';
-        });
-    }
-
-    function openQuiz(fileName) {
-        const user = "palashmahmod";
-        const repo = "quiz-files";
-        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/${fileName}.html`;
+    function addQuestion(savedData = null) {
+        const currentId = Date.now() + Math.floor(Math.random() * 1000);
+        const area = document.getElementById('questions-area');
+        const div = document.createElement('div');
+        div.className = 'q-card';
+        div.id = `q-block-${currentId}`;
         
-        fetch(rawUrl)
-            .then(response => response.text())
-            .then(html => {
-                // কুইজ ফাইলের ভেতরে ডেটা পাঠানোর জন্য স্ক্রিপ্ট
-                const injectionScript = `
-                <script>
-                    window.addEventListener('load', function() {
-                        if(document.getElementById('studentName')) document.getElementById('studentName').innerText = "${currentUser.name}";
-                        if(document.getElementById('studentRoll')) document.getElementById('studentRoll').innerText = "${currentUser.roll}";
-                        if(document.getElementById('studentClass')) document.getElementById('studentClass').innerText = "${currentUser.cls}";
-                        if(document.getElementById('studentSection')) document.getElementById('studentSection').innerText = "${currentUser.sec}";
-                        
-                        // ব্যাক বাটন যুক্ত করা
-                        let bBtn = document.createElement('button');
-                        bBtn.innerHTML = "ড্যাশবোর্ডে ফিরুন";
-                        bBtn.style.cssText = "width:100%; padding:14px; background:#95a5a6; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:bold; margin-top:10px;";
-                        bBtn.onclick = function() { window.location.href = window.location.origin + window.location.pathname; };
-                        let card = document.querySelector('.card');
-                        if(card) card.appendChild(bBtn);
-                    });
-                <\/script>`;
-
-                const finalHtml = html + injectionScript;
-                
-                // Blob তৈরি করে ফাইলটি ওপেন করা (সবচেয়ে নিরাপদ পদ্ধতি)
-                const blob = new Blob([finalHtml], { type: 'text/html' });
-                const blobUrl = URL.createObjectURL(blob);
-                window.location.href = blobUrl;
-            })
-            .catch(err => {
-                alert("ত্রুটি: পরীক্ষা ফাইলটি লোড করা যাচ্ছে না।");
-            });
+        div.innerHTML = `
+            <button class="btn-del" onclick="removeQ('${currentId}')">বাতিল</button>
+            <textarea class="stimulus-text stimulus-box" placeholder="উদ্দীপক (ঐচ্ছিক)...">${savedData ? (savedData.stimulus || '') : ''}</textarea>
+            <b class="q-num-display">প্রশ্ন নং: </b>
+            <textarea class="q-text" placeholder="প্রশ্ন লিখুন...">${savedData ? savedData.q : ''}</textarea>
+            <div class="opt-row"><span>ক)</span><input type="text" class="o1" value="${savedData ? savedData.o1 : ''}"> <input type="radio" name="ans-${currentId}" value="ক" ${savedData?.ans === 'ক' || !savedData ? 'checked' : ''}></div>
+            <div class="opt-row"><span>খ)</span><input type="text" class="o2" value="${savedData ? savedData.o2 : ''}"> <input type="radio" name="ans-${currentId}" value="খ" ${savedData?.ans === 'খ' ? 'checked' : ''}></div>
+            <div class="opt-row"><span>গ)</span><input type="text" class="o3" value="${savedData ? savedData.o3 : ''}"> <input type="radio" name="ans-${currentId}" value="গ" ${savedData?.ans === 'গ' ? 'checked' : ''}></div>
+            <div class="opt-row"><span>ঘ)</span><input type="text" class="o4" value="${savedData ? savedData.o4 : ''}"> <input type="radio" name="ans-${currentId}" value="ঘ" ${savedData?.ans === 'ঘ' ? 'checked' : ''}></div>
+        `;
+        area.appendChild(div);
+        reIndexQuestions();
     }
 
-    function logout() {
-        if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
-            localStorage.clear();
+    function reIndexQuestions() {
+        document.querySelectorAll('.q-card').forEach((card, index) => {
+            card.querySelector('.q-num-display').innerText = `প্রশ্ন নং: ${index + 1}`;
+        });
+    }
+
+    function removeQ(id) { 
+        document.getElementById(`q-block-${id}`).remove(); 
+        reIndexQuestions(); 
+    }
+
+    function clearAllQuestions() {
+        if(confirm("সব মুছতে চান?")) {
+            localStorage.removeItem('mcq_draft_v3');
             location.reload();
+        }
+    }
+
+    function saveToStorage(showAlert = false) {
+        const questions = [];
+        document.querySelectorAll('.q-card').forEach(card => {
+            const radio = card.querySelector('input[type="radio"]:checked');
+            questions.push({
+                stimulus: card.querySelector('.stimulus-text').value,
+                q: card.querySelector('.q-text').value,
+                o1: card.querySelector('.o1').value,
+                o2: card.querySelector('.o2').value,
+                o3: card.querySelector('.o3').value,
+                o4: card.querySelector('.o4').value,
+                ans: radio ? radio.value : 'ক'
+            });
+        });
+        const data = {
+            title: document.getElementById('quizTitle').value,
+            cls: document.getElementById('quizClass').value,
+            sub: document.getElementById('quizSubject').value,
+            chapter: document.getElementById('quizChapter').value,
+            marks: document.getElementById('quizTotalMarks').value,
+            time: document.getElementById('quizTime').value,
+            fName: document.getElementById('fileName').value,
+            questions: questions
+        };
+        localStorage.setItem('mcq_draft_v3', JSON.stringify(data));
+        if(showAlert) alert("ড্রাফট সেইভ হয়েছে!");
+    }
+
+    window.onload = () => {
+        const saved = JSON.parse(localStorage.getItem('mcq_draft_v3'));
+        if(saved) {
+            document.getElementById('quizTitle').value = saved.title || "";
+            document.getElementById('quizClass').value = saved.cls || "";
+            document.getElementById('quizSubject').value = saved.sub || "";
+            document.getElementById('quizChapter').value = saved.chapter || "";
+            document.getElementById('quizTotalMarks').value = saved.marks || "";
+            document.getElementById('quizTime').value = saved.time || "";
+            document.getElementById('fileName').value = saved.fName || "";
+            if(saved.questions) saved.questions.forEach(q => addQuestion(q));
+        }
+    };
+
+    function buildTemplate() {
+        const quizData = {
+            title: document.getElementById('quizTitle').value || 'MCQ Exam',
+            cls: document.getElementById('quizClass').value || '',
+            sub: document.getElementById('quizSubject').value || '',
+            chapter: document.getElementById('quizChapter').value || '',
+            marks: document.getElementById('quizTotalMarks').value || '0',
+            time: document.getElementById('quizTime').value || '30',
+            fName: document.getElementById('fileName').value || 'temp'
+        };
+        const questions = [];
+        document.querySelectorAll('.q-card').forEach((block, i) => {
+            const radio = block.querySelector('input[type="radio"]:checked');
+            questions.push({
+                num: i + 1,
+                stimulus: block.querySelector('.stimulus-text').value,
+                q: block.querySelector('.q-text').value,
+                o1: block.querySelector('.o1').value,
+                o2: block.querySelector('.o2').value,
+                o3: block.querySelector('.o3').value,
+                o4: block.querySelector('.o4').value,
+                ans: radio ? radio.value : 'ক'
+            });
+        });
+
+        return `<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${quizData.title}</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"><\/script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"><\/script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; --success: #27ae60; --danger: #e74c3c; }
+        body { font-family: sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: 20px auto; }
+        .student-info-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 10px; margin: 15px 0; }
+        .student-info-box p { margin: 5px 0; font-size: 15px; font-weight: bold; color: #475569; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-start { background: var(--success); color: white; }
+        .timer-header { position: sticky; top: 0; background: var(--primary); color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
+        .btn-submit-nav { background: var(--success); color: white; padding: 8px 15px; border-radius: 5px; border: none; font-weight: bold; cursor: pointer; }
+        .q-box { margin-bottom: 25px; padding: 15px; border-bottom: 1px solid #eee; }
+        .option-label { display: block; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; }
+        .option-label.correct { background: #dcfce7 !important; border-color: #22c55e; }
+        .option-label.wrong { background: #fee2e2 !important; border-color: #ef4444; }
+        .stimulus { background: #f1f5f9; padding: 12px; border-left: 4px solid var(--accent); margin-bottom: 12px; font-style: italic; }
+        .result-badge { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 12px; text-align: left; }
+        .result-badge h3 { margin: 0 0 15px 0; color: #166534; text-align: center; border-bottom: 1px solid #bbf7d0; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div id="setup-page" class="card" style="text-align:center;">
+        <h2 style="color:var(--primary); margin-top:0;">${quizData.title}</h2>
+        <p style="font-weight:bold;">শ্রেণি: ${quizData.cls} | বিষয়: ${quizData.sub}</p>
+        <div class="student-info-box">
+            <p><i class="fas fa-user"></i> নাম: <span id="studentName">--</span></p>
+            <p><i class="fas fa-graduation-cap"></i> শ্রেণি: <span id="studentClass">--</span> | শাখা: <span id="studentSection">--</span></p>
+            <p><i class="fas fa-id-badge"></i> রোল: <span id="studentRoll">--</span></p>
+        </div>
+        <button class="btn btn-start" onclick="startQuiz()">পরীক্ষা শুরু করুন</button>
+    </div>
+
+    <div id="exam-page" style="display:none">
+        <div class="timer-header">
+            <div><i class="fas fa-clock"></i> অবশিষ্ট সময়: <span id="time-left">00:00</span></div>
+            <button class="btn-submit-nav" onclick="submitQuiz()">সাবমিট করুন</button>
+        </div>
+        <div id="quiz-container" class="card"></div>
+    </div>
+
+    <div id="result-page" class="card" style="display:none">
+        <div style="text-align:center;">
+             <h2 style="margin:0;">মডেল টেস্ট</h2>
+             <p>বিষয়: ${quizData.sub} | অধ্যায়: ${quizData.chapter} | তারিখ: ${new Date().toLocaleDateString()}</p>
+        </div>
+        <div class="result-badge">
+            <h3>ফলাফল</h3>
+            <p>ব্যয়কৃত সময়: <span id="res-time">0:00</span></p>
+            <p>সঠিক হয়েছে: <span id="res-score">0</span>/${quizData.marks}</p>
+            <p>ভুল নং: <span id="res-wrongs">নেই</span></p>
+        </div>
+        <div id="review-container"></div>
+        <button class="btn" style="background:#64748b; color:white; margin-top:20px;" onclick="location.reload()"><i class="fas fa-arrow-left"></i> ব্যাক</button>
+    </div>
+
+    <script>
+        const firebaseConfig = ${JSON.stringify(firebaseConfig)};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const studentInfo = JSON.parse(localStorage.getItem('loggedUser')) || {};
+        const questions = ${JSON.stringify(questions)};
+        let totalSeconds = ${parseInt(quizData.time) * 60};
+        let timerInterval;
+        let startTime;
+
+        window.onload = () => {
+            document.getElementById('studentName').innerText = studentInfo.name || "--";
+            document.getElementById('studentClass').innerText = studentInfo.cls || "--";
+            document.getElementById('studentSection').innerText = studentInfo.sec || "--";
+            document.getElementById('studentRoll').innerText = studentInfo.roll || "--";
+        };
+
+        function startQuiz() {
+            document.getElementById('setup-page').style.display = 'none';
+            document.getElementById('exam-page').style.display = 'block';
+            startTime = Date.now();
+            renderQuestions();
+            startTimer();
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = questions.map((q, i) => \`
+                <div class="q-box">
+                    \${q.stimulus ? '<div class="stimulus">' + q.stimulus + '</div>' : ''}
+                    <b>\${i + 1}. \${q.q}</b>
+                    <label class="option-label"><input type="radio" name="q\${i}" value="ক"> ক) \${q.o1}</label>
+                    <label class="option-label"><input type="radio" name="q\${i}" value="খ"> খ) \${q.o2}</label>
+                    <label class="option-label"><input type="radio" name="q\${i}" value="গ"> গ) \${q.o3}</label>
+                    <label class="option-label"><input type="radio" name="q\${i}" value="ঘ) "> ঘ) \${q.o4}</label>
+                </div>
+            \`).join('');
+        }
+
+        function startTimer() {
+            const display = document.getElementById('time-left');
+            timerInterval = setInterval(() => {
+                let mins = Math.floor(totalSeconds / 60);
+                let secs = totalSeconds % 60;
+                display.innerText = (mins < 10 ? '0' : '') + mins + ":" + (secs < 10 ? '0' : '') + secs;
+                if (totalSeconds <= 0) { clearInterval(timerInterval); submitQuiz(); }
+                totalSeconds--;
+            }, 1000);
+        }
+
+        async function submitQuiz() {
+            clearInterval(timerInterval);
+            let score = 0;
+            let wrongs = [];
+            const timeTakenSec = Math.floor((Date.now() - startTime) / 1000);
+            const timeStr = Math.floor(timeTakenSec / 60) + ":" + (timeTakenSec % 60 < 10 ? '0' : '') + (timeTakenSec % 60);
+
+            questions.forEach((q, i) => {
+                const selected = document.querySelector(\`input[name="q\${i}"]:checked\`);
+                if (selected && selected.value === q.ans) score++;
+                else wrongs.push(i + 1);
+            });
+
+            const resultData = {
+                name: studentInfo.name || "Unknown",
+                roll: studentInfo.roll || "0",
+                cls: studentInfo.cls || "${quizData.cls}",
+                sec: studentInfo.sec || "N/A",
+                quizFile: "${quizData.fName}.html",
+                score: score + "/${quizData.marks} / 0",
+                time: new Date().toLocaleString(),
+                duration: "(" + timeStr + ")",
+                wrongQuestions: wrongs.length > 0 ? wrongs.join(', ') : "সবগুলো সঠিক!"
+            };
+
+            try {
+                await db.ref('QuizResults').push(resultData);
+            } catch(e) { console.error(e); }
+
+            document.getElementById('exam-page').style.display = 'none';
+            document.getElementById('result-page').style.display = 'block';
+            document.getElementById('res-time').innerText = timeStr;
+            document.getElementById('res-score').innerText = score;
+            document.getElementById('res-wrongs').innerText = wrongs.length > 0 ? wrongs.join(', ') : "সবগুলো সঠিক!";
+            
+            showReview();
+        }
+
+        function showReview() {
+            const container = document.getElementById('review-container');
+            container.innerHTML = questions.map((q, i) => {
+                const selected = document.querySelector(\`input[name="q\${i}"]:checked\`)?.value;
+                return \`
+                <div class="q-box">
+                    <b>\${i + 1}. \${q.q}</b>
+                    <div class="option-label \${q.ans === 'ক' ? 'correct' : (selected === 'ক' ? 'wrong' : '')}">ক) \${q.o1} \${q.ans === 'ক' ? ' <i class="fas fa-check"></i>' : ''}</div>
+                    <div class="option-label \${q.ans === 'খ' ? 'correct' : (selected === 'খ' ? 'wrong' : '')}">খ) \${q.o2} \${q.ans === 'খ' ? ' <i class="fas fa-check"></i>' : ''}</div>
+                    <div class="option-label \${q.ans === 'গ' ? 'correct' : (selected === 'গ' ? 'wrong' : '')}">গ) \${q.o3} \${q.ans === 'গ' ? ' <i class="fas fa-check"></i>' : ''}</div>
+                    <div class="option-label \${q.ans === 'ঘ' ? 'correct' : (selected === 'ঘ' ? 'wrong' : '')}">ঘ) \${q.o4} \${q.ans === 'ঘ' ? ' <i class="fas fa-check"></i>' : ''}</div>
+                </div>\`;
+            }).join('');
+        }
+    <\/script>
+</body>
+</html>`;
+    }
+
+    function generateFile() {
+        const template = buildTemplate();
+        const fName = document.getElementById('fileName').value || 'quiz';
+        const blob = new Blob([template], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fName + '.html';
+        a.click();
+    }
+
+    async function uploadToGithub() {
+        const fNameInput = document.getElementById('fileName').value;
+        if (!fNameInput) return alert("ফাইল নাম লিখুন!");
+        const activeToken = getGithubToken();
+        if (!activeToken) return;
+        
+        document.getElementById('loader').style.display = 'flex';
+        
+        const fileName = fNameInput + ".html";
+        const contentStr = buildTemplate();
+        const contentEncoded = btoa(unescape(encodeURIComponent(contentStr)));
+
+        try {
+            const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${fileName}`;
+            let sha = "";
+            const checkRes = await fetch(url, { headers: { "Authorization": `token ${activeToken}` } });
+            if (checkRes.ok) { 
+                const existingData = await checkRes.json(); 
+                sha = existingData.sha; 
+            }
+
+            const response = await fetch(url, {
+                method: "PUT",
+                headers: { "Authorization": `token ${activeToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ message: `Update: ${fileName}`, content: contentEncoded, sha: sha || undefined })
+            });
+
+            document.getElementById('loader').style.display = 'none';
+            if (response.ok) alert("সফলভাবে আপলোড হয়েছে!"); 
+            else alert("আপলোডে সমস্যা হয়েছে।");
+        } catch (error) {
+            document.getElementById('loader').style.display = 'none';
+            alert("ত্রুটি: " + error.message);
         }
     }
 </script>
