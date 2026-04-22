@@ -7,7 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f0f2f5; --success: #27ae60; --white: #white; }
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f0f2f5; --success: #27ae60; --white: #ffffff; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
         .card { width: 95%; max-width: 450px; background: #ffffff; padding: 25px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
         .header-profile { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; text-align: left; }
@@ -24,6 +24,9 @@
         #dashboard { display: none; }
         .quiz-card { background: #fff; padding: 15px; border-radius: 18px; margin-top: 15px; border: 1px solid #e1e8ed; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 5px; background: #e8f5e9; color: var(--success); }
+        
+        /* কুইজ কন্টেইনার স্টাইল */
+        #quiz-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -71,6 +74,8 @@
     <div id="noQuiz" style="margin-top:20px; color:#95a5a6; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
     <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:25px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
 </div>
+
+<div id="quiz-overlay"></div>
 
 <script>
     const firebaseConfig = {
@@ -151,36 +156,51 @@
                 throw new Error('Not Found');
             })
             .then(html => {
-                // কুইজ ফাইলের ভিতরে ডেটা পাঠানোর জন্য স্ক্রিপ্ট ইনজেকশন
+                const overlay = document.getElementById('quiz-overlay');
+                overlay.style.display = 'block';
+                
+                // কুইজ ফাইলের ভেতর ডেটা ইনজেকশন করার জন্য স্ক্রিপ্ট
                 const injectionScript = `
                 <script>
-                    window.onload = function() {
-                        // শিক্ষার্থীর তথ্য অটো-ফিলাপ
-                        if(document.getElementById('studentName')) document.getElementById('studentName').innerText = "${currentUser.name}";
-                        if(document.getElementById('studentRoll')) document.getElementById('studentRoll').innerText = "${currentUser.roll}";
-                        if(document.getElementById('studentClass')) document.getElementById('studentClass').innerText = "${currentUser.cls}";
-                        if(document.getElementById('studentSection')) document.getElementById('studentSection').innerText = "${currentUser.sec}";
-                        
-                        // ইনপুট ফিল্ড থাকলে সেগুলোতেও ভ্যালু সেট করা
-                        if(document.querySelector('input[name="name"]')) document.querySelector('input[name="name"]').value = "${currentUser.name}";
-                        if(document.querySelector('input[name="roll"]')) document.querySelector('input[name="roll"]').value = "${currentUser.roll}";
-
-                        // ব্যাক বাটন যুক্ত করা যদি না থাকে
-                        if(!document.getElementById('backBtn')){
-                            let bBtn = document.createElement('button');
-                            bBtn.innerHTML = "ব্যাক";
-                            bBtn.className = "btn"; 
-                            bBtn.style.background = "#95a5a6";
-                            bBtn.style.marginTop = "10px";
-                            bBtn.onclick = function() { location.reload(); };
-                            document.querySelector('.card').appendChild(bBtn);
-                        }
-                    };
+                    (function() {
+                        const checkElements = setInterval(() => {
+                            const nameEl = document.getElementById('studentName');
+                            if(nameEl) {
+                                document.getElementById('studentName').innerText = "${currentUser.name}";
+                                if(document.getElementById('studentRoll')) document.getElementById('studentRoll').innerText = "${currentUser.roll}";
+                                if(document.getElementById('studentClass')) document.getElementById('studentClass').innerText = "${currentUser.cls}";
+                                if(document.getElementById('studentSection')) document.getElementById('studentSection').innerText = "${currentUser.sec}";
+                                
+                                // ব্যাক বাটন হ্যান্ডলিং
+                                let backBtn = document.createElement('button');
+                                backBtn.innerHTML = "ব্যাক";
+                                backBtn.style.cssText = "width:100%; padding:14px; background:#95a5a6; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:bold; margin-top:10px;";
+                                backBtn.onclick = function() { window.location.reload(); };
+                                
+                                const card = document.querySelector('.card');
+                                if(card) card.appendChild(backBtn);
+                                
+                                clearInterval(checkElements);
+                            }
+                        }, 100);
+                    })();
                 <\/script>`;
 
-                document.open();
-                document.write(html + injectionScript);
-                document.close();
+                // এখানে সরাসরি ইনজেকশন করছি
+                overlay.innerHTML = html + injectionScript;
+
+                // স্ক্রিপ্টগুলো পুনরায় এক্সিকিউট করার ব্যবস্থা (যেহেতু innerHTML স্ক্রিপ্ট রান করে না)
+                const scripts = overlay.querySelectorAll("script");
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement("script");
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                    } else {
+                        newScript.textContent = oldScript.textContent;
+                    }
+                    document.body.appendChild(newScript);
+                    oldScript.remove();
+                });
             })
             .catch(err => {
                 alert("ত্রুটি: '" + fileName + ".html' ফাইলটি পাওয়া যাচ্ছে না।");
@@ -188,7 +208,7 @@
     }
 
     function logout() {
-        if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
+        if (prompt("লগআউট পাসওয়ার্ড:") === "pm5522") {
             localStorage.clear();
             location.reload();
         }
