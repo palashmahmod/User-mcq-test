@@ -24,11 +24,6 @@
         #dashboard { display: none; }
         .quiz-card { background: #fff; padding: 15px; border-radius: 18px; margin-top: 15px; border: 1px solid #e1e8ed; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 5px; background: #e8f5e9; color: var(--success); }
-        
-        /* কুইজ ওভারলে এবং আইফ্রেম স্টাইল */
-        #quiz-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 10000; }
-        iframe { width: 100%; height: 100%; border: none; }
-        .close-quiz { position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; z-index: 10001; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -75,11 +70,6 @@
     <div id="quizList"></div>
     <div id="noQuiz" style="margin-top:20px; color:#95a5a6; display:none;">বর্তমানে কোনো পরীক্ষা নেই।</div>
     <button class="btn" style="background:#fdf0ef; color:#e74c3c; margin-top:25px; border:1px solid #fadbd8;" onclick="logout()">লগআউট করুন</button>
-</div>
-
-<div id="quiz-container">
-    <button class="close-quiz" onclick="closeQuiz()">বন্ধ করুন (Back)</button>
-    <iframe id="quizFrame"></iframe>
 </div>
 
 <script>
@@ -155,52 +145,38 @@
         const repo = "quiz-files";
         const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/${fileName}.html`;
         
-        const container = document.getElementById('quiz-container');
-        const frame = document.getElementById('quizFrame');
-        
         fetch(rawUrl)
-            .then(response => {
-                if (response.ok) return response.text();
-                throw new Error('Not Found');
-            })
+            .then(response => response.text())
             .then(html => {
-                container.style.display = 'block';
-                
-                // আইফ্রেমের ভেতরে কন্টেন্ট এবং অটো-ফিল স্ক্রিপ্ট লিখছি
-                const doc = frame.contentWindow.document;
-                doc.open();
-                doc.write(html);
-                
-                // তথ্য অটো-ফিল করার জন্য ইনজেকশন
-                const autoFillScript = `
+                // কুইজ ফাইলের ভেতরে ডেটা পাঠানোর জন্য স্ক্রিপ্ট
+                const injectionScript = `
                 <script>
-                    setTimeout(() => {
+                    window.addEventListener('load', function() {
                         if(document.getElementById('studentName')) document.getElementById('studentName').innerText = "${currentUser.name}";
                         if(document.getElementById('studentRoll')) document.getElementById('studentRoll').innerText = "${currentUser.roll}";
                         if(document.getElementById('studentClass')) document.getElementById('studentClass').innerText = "${currentUser.cls}";
                         if(document.getElementById('studentSection')) document.getElementById('studentSection').innerText = "${currentUser.sec}";
                         
-                        // ইনপুট ফিল্ড থাকলে
-                        const nameInput = document.querySelector('input[name="name"]');
-                        if(nameInput) nameInput.value = "${currentUser.name}";
-                        const rollInput = document.querySelector('input[name="roll"]');
-                        if(rollInput) rollInput.value = "${currentUser.roll}";
-                    }, 500);
+                        // ব্যাক বাটন যুক্ত করা
+                        let bBtn = document.createElement('button');
+                        bBtn.innerHTML = "ড্যাশবোর্ডে ফিরুন";
+                        bBtn.style.cssText = "width:100%; padding:14px; background:#95a5a6; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:bold; margin-top:10px;";
+                        bBtn.onclick = function() { window.location.href = window.location.origin + window.location.pathname; };
+                        let card = document.querySelector('.card');
+                        if(card) card.appendChild(bBtn);
+                    });
                 <\/script>`;
+
+                const finalHtml = html + injectionScript;
                 
-                doc.write(autoFillScript);
-                doc.close();
+                // Blob তৈরি করে ফাইলটি ওপেন করা (সবচেয়ে নিরাপদ পদ্ধতি)
+                const blob = new Blob([finalHtml], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
+                window.location.href = blobUrl;
             })
             .catch(err => {
-                alert("ত্রুটি: কুইজ ফাইলটি লোড করা যাচ্ছে না। কোডটি চেক করুন।");
+                alert("ত্রুটি: পরীক্ষা ফাইলটি লোড করা যাচ্ছে না।");
             });
-    }
-
-    function closeQuiz() {
-        if(confirm("আপনি কি পরীক্ষা থেকে বের হতে চান?")) {
-            document.getElementById('quiz-container').style.display = 'none';
-            document.getElementById('quizFrame').src = "";
-        }
     }
 
     function logout() {
