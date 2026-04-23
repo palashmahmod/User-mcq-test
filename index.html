@@ -4,21 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student App - index</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #FFFBF0; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #FFFBF0; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #eee; border-radius: 10px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 14px; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        .btn { width: 100%; padding: 14px; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px; }
+        .btn:active { transform: scale(0.98); }
         #home-screen { display: none; }
-        .quiz-btn { background: #27ae60; margin-top: 15px; display: none; }
+        .quiz-btn { background: #27ae60; margin-top: 15px; display: none; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        .u-info-text { color: #555; font-size: 15px; line-height: 1.6; }
     </style>
 </head>
 <body>
 
 <div id="login-screen" class="card">
-    <h2>স্টুডেন্ট লগইন</h2>
+    <i class="fas fa-user-graduate" style="font-size: 40px; color: #3498db; margin-bottom: 15px;"></i>
+    <h2 style="margin-top: 0;">শিক্ষার্থী লগইন</h2>
     <input type="number" id="loginId" placeholder="আইডি নং (English)">
     <input type="number" id="loginPin" placeholder="পিন নম্বর (English)">
     <button class="btn" onclick="handleLogin()">লগইন করুন</button>
@@ -26,12 +32,16 @@
 
 <div id="home-screen" class="card">
     <h3 id="uName">স্বাগতম!</h3>
-    <p id="uInfo"></p>
+    <div class="u-info-text">
+        <p id="uInfo"></p>
+    </div>
     <hr>
     <div id="quiz-list-area">
-        <p>সক্রিয় কোনো পরীক্ষা নেই।</p>
+        <p style="color: #888;">সক্রিয় কোনো পরীক্ষা নেই।</p>
     </div>
-    <button class="btn" style="background:#e74c3c; margin-top:20px;" onclick="logout()">লগআউট</button>
+    <button class="btn" style="background:#e74c3c; margin-top:30px;" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> লগআউট
+    </button>
 </div>
 
 <script>
@@ -40,12 +50,17 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-    firebase.initializeApp(firebaseConfig);
+    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.database();
 
     function handleLogin() {
-        const id = document.getElementById('loginId').value;
-        const pin = document.getElementById('loginPin').value;
+        const id = document.getElementById('loginId').value.trim();
+        const pin = document.getElementById('loginPin').value.trim();
+        
+        if(!id || !pin) return alert("আইডি এবং পিন দিন");
 
         db.ref('users/' + id).once('value', (snap) => {
             const user = snap.val();
@@ -65,9 +80,12 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('home-screen').style.display = 'block';
         document.getElementById('uName').innerText = "স্বাগতম, " + user.name;
-        document.getElementById('uInfo').innerText = `শ্রেণি: ${user.cls} | রোল: ${user.roll}`;
+        document.getElementById('uInfo').innerHTML = `
+            <b>শ্রেণি:</b> ${user.cls} <br> 
+            <b>শাখা:</b> ${user.section} <br> 
+            <b>রোল:</b> ${user.roll}`;
 
-        // কুইজ অন/অফ চেক (file_C এর লজিক)
+        // কুইজ অন/অফ চেক (Admin file_C এর ডাটা অনুযায়ী)
         db.ref('quiz_control').on('value', (snap) => {
             const control = snap.val();
             const area = document.getElementById('quiz-list-area');
@@ -77,24 +95,40 @@
                         <i class="fas fa-edit"></i> ${control.title || 'পরীক্ষা শুরু করুন'}
                     </button>`;
             } else {
-                area.innerHTML = "<p>বর্তমানে কোনো পরীক্ষা নেই।</p>";
+                area.innerHTML = "<p style='color: #888;'>বর্তমানে কোনো পরীক্ষা নেই।</p>";
             }
         });
     }
 
     function goToExam(fileName) {
-        // এখানে গিটহাবের পেজে রিডাইরেক্ট হবে
-        window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html`;
+        const user = JSON.parse(localStorage.getItem('loggedUser'));
+        if(!user) return alert("সেশন শেষ! আবার লগইন করুন।");
+
+        // URL Parameters এর মাধ্যমে নাম, রোল, শ্রেণি পাঠানো হচ্ছে
+        // এটি আপনার কুইজ পেজে "নাম: --" সমস্যা সমাধান করবে
+        const params = new URLSearchParams({
+            name: user.name,
+            roll: user.roll,
+            cls: user.cls,
+            sec: user.section,
+            uid: user.userId
+        }).toString();
+
+        window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html?${params}`;
     }
 
     function logout() {
-        localStorage.removeItem('loggedUser');
-        location.reload();
+        if(confirm("আপনি কি লগআউট করতে চান?")) {
+            localStorage.removeItem('loggedUser');
+            location.reload();
+        }
     }
 
     // অটো লগইন চেক
-    if(localStorage.getItem('loggedUser')) {
-        showHome();
+    window.onload = () => {
+        if(localStorage.getItem('loggedUser')) {
+            showHome();
+        }
     }
 </script>
 </body>
