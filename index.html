@@ -18,6 +18,7 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
         hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
         .u-info-text { color: #555; font-size: 15px; line-height: 1.6; }
+        .loader-text { color: #f39c12; font-weight: bold; display: none; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -39,6 +40,7 @@
     <div id="quiz-list-area">
         <p style="color: #888;">সক্রিয় কোনো পরীক্ষা নেই।</p>
     </div>
+    <p id="check-msg" class="loader-text"><i class="fas fa-spinner fa-spin"></i> যাচাই করা হচ্ছে...</p>
     <button class="btn" style="background:#e74c3c; margin-top:30px;" onclick="logout()">
         <i class="fas fa-sign-out-alt"></i> লগআউট
     </button>
@@ -50,7 +52,7 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-    
+
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
@@ -65,6 +67,8 @@
         db.ref('users/' + id).once('value', (snap) => {
             const user = snap.val();
             if(user && user.password == pin) {
+                // ইউজার অবজেক্টে আইডিটি নিশ্চিত করা হচ্ছে
+                user.id = id; 
                 localStorage.setItem('loggedUser', JSON.stringify(user));
                 showHome();
             } else {
@@ -81,17 +85,18 @@
         document.getElementById('home-screen').style.display = 'block';
         document.getElementById('uName').innerText = "স্বাগতম, " + user.name;
         document.getElementById('uInfo').innerHTML = `
+            <b>আইডি:</b> ${user.id} <br>
             <b>শ্রেণি:</b> ${user.cls} <br> 
             <b>শাখা:</b> ${user.section} <br> 
             <b>রোল:</b> ${user.roll}`;
 
-        // কুইজ অন/অফ চেক (Admin file_C এর ডাটা অনুযায়ী)
+        // কুইজ কন্ট্রোল চেক
         db.ref('quiz_control').on('value', (snap) => {
             const control = snap.val();
             const area = document.getElementById('quiz-list-area');
             if(control && control.status === "on") {
                 area.innerHTML = `
-                    <button class="btn quiz-btn" style="display:block" onclick="goToExam('${control.file}')">
+                    <button class="btn quiz-btn" style="display:block" onclick="checkAndGo('${control.file}', '${control.title}')">
                         <i class="fas fa-edit"></i> ${control.title || 'পরীক্ষা শুরু করুন'}
                     </button>`;
             } else {
@@ -100,18 +105,43 @@
         });
     }
 
+    function checkAndGo(fileName, quizTitle) {
+        const user = JSON.parse(localStorage.getItem('loggedUser'));
+        const loader = document.getElementById('check-msg');
+        loader.style.display = "block";
+
+        // ডাবল সাবমিশন চেক
+        db.ref('QuizResults')
+          .orderByChild('userId')
+          .equalTo(user.id)
+          .once('value', (snap) => {
+              loader.style.display = "none";
+              let alreadyDone = false;
+              const data = snap.val();
+              if(data) {
+                  Object.values(data).forEach(res => {
+                      if(res.quizTitle === quizTitle) alreadyDone = true;
+                  });
+              }
+
+              if(alreadyDone) {
+                  alert("আপনি ইতিমধ্যে এই পরীক্ষাটি জমা দিয়েছেন!");
+              } else {
+                  goToExam(fileName);
+              }
+          });
+    }
+
     function goToExam(fileName) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
-        if(!user) return alert("সেশন শেষ! আবার লগইন করুন।");
-
-        // URL Parameters এর মাধ্যমে নাম, রোল, শ্রেণি পাঠানো হচ্ছে
-        // এটি আপনার কুইজ পেজে "নাম: --" সমস্যা সমাধান করবে
+        
+        // মাস্টার কুইজের জন্য প্রয়োজনীয় প্যারামিটার সেটআপ
         const params = new URLSearchParams({
+            id: user.id,              // টাইমার সিঙ্কের জন্য ইউনিক আইডি
             name: user.name,
             roll: user.roll,
             cls: user.cls,
-            sec: user.section,
-            uid: user.userId
+            sec: user.section         // সেকশন পাস করা হচ্ছে
         }).toString();
 
         window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html?${params}`;
@@ -124,7 +154,6 @@
         }
     }
 
-    // অটো লগইন চেক
     window.onload = () => {
         if(localStorage.getItem('loggedUser')) {
             showHome();
