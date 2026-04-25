@@ -14,8 +14,8 @@
         .btn { width: 100%; padding: 14px; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px; }
         .btn:active { transform: scale(0.98); }
         #home-screen { display: none; }
-        .quiz-btn { background: #27ae60; margin-top: 15px; display: none; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .quiz-btn { background: #27ae60; margin-top: 10px; animation: pulse 2s infinite; width: 100%; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.01); } 100% { transform: scale(1); } }
         hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
         .u-info-text { color: #555; font-size: 15px; line-height: 1.6; }
         .loader-text { color: #f39c12; font-weight: bold; display: none; margin-top: 10px; }
@@ -25,25 +25,21 @@
 
 <div id="login-screen" class="card">
     <i class="fas fa-user-graduate" style="font-size: 40px; color: #3498db; margin-bottom: 15px;"></i>
-    <h2 style="margin-top: 0;">শিক্ষার্থী লগইন</h2>
-    <input type="number" id="loginId" placeholder="আইডি নং (English)">
-    <input type="number" id="loginPin" placeholder="পিন নম্বর (English)">
+    <h2>শিক্ষার্থী লগইন</h2>
+    <input type="number" id="loginId" placeholder="আইডি নং">
+    <input type="number" id="loginPin" placeholder="পিন নম্বর">
     <button class="btn" onclick="handleLogin()">লগইন করুন</button>
 </div>
 
 <div id="home-screen" class="card">
     <h3 id="uName">স্বাগতম!</h3>
-    <div class="u-info-text">
-        <p id="uInfo"></p>
-    </div>
+    <div class="u-info-text"><p id="uInfo"></p></div>
     <hr>
     <div id="quiz-list-area">
-        <p style="color: #888;">সক্রিয় কোনো পরীক্ষা নেই।</p>
+        <p style="color: #888;">লোড হচ্ছে...</p>
     </div>
-    <p id="check-msg" class="loader-text"><i class="fas fa-spinner fa-spin"></i> যাচাই করা হচ্ছে...</p>
-    <button class="btn" style="background:#e74c3c; margin-top:30px;" onclick="logout()">
-        <i class="fas fa-sign-out-alt"></i> লগআউট
-    </button>
+    <p id="check-msg" class="loader-text"><i class="fas fa-spinner fa-spin"></i> যাচাই হচ্ছে...</p>
+    <button class="btn" style="background:#e74c3c; margin-top:30px;" onclick="logout()">লগআউট</button>
 </div>
 
 <script>
@@ -52,113 +48,75 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     function handleLogin() {
         const id = document.getElementById('loginId').value.trim();
         const pin = document.getElementById('loginPin').value.trim();
-        
-        if(!id || !pin) return alert("আইডি এবং পিন দিন");
-
         db.ref('users/' + id).once('value', (snap) => {
             const user = snap.val();
             if(user && user.password == pin) {
-                // ইউজার অবজেক্টে আইডিটি নিশ্চিত করা হচ্ছে
-                user.id = id; 
+                user.id = id;
                 localStorage.setItem('loggedUser', JSON.stringify(user));
                 showHome();
-            } else {
-                alert("আইডি বা পিন ভুল!");
-            }
+            } else { alert("আইডি বা পিন ভুল!"); }
         });
     }
 
     function showHome() {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         if(!user) return;
-
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('home-screen').style.display = 'block';
         document.getElementById('uName').innerText = "স্বাগতম, " + user.name;
-        document.getElementById('uInfo').innerHTML = `
-            <b>আইডি:</b> ${user.id} <br>
-            <b>শ্রেণি:</b> ${user.cls} <br> 
-            <b>শাখা:</b> ${user.section} <br> 
-            <b>রোল:</b> ${user.roll}`;
+        document.getElementById('uInfo').innerHTML = `<b>আইডি:</b> ${user.id} | <b>রোল:</b> ${user.roll}`;
 
-        // কুইজ কন্ট্রোল চেক
-        db.ref('quiz_control').on('value', (snap) => {
-            const control = snap.val();
+        // ব্যক্তিগত কুইজ লিস্ট লোড করা
+        db.ref('IndividualQuizzes/' + user.id).on('value', (snap) => {
             const area = document.getElementById('quiz-list-area');
-            if(control && control.status === "on") {
-                area.innerHTML = `
-                    <button class="btn quiz-btn" style="display:block" onclick="checkAndGo('${control.file}', '${control.title}')">
-                        <i class="fas fa-edit"></i> ${control.title || 'পরীক্ষা শুরু করুন'}
-                    </button>`;
+            const data = snap.val();
+            area.innerHTML = "";
+            if(data) {
+                Object.values(data).forEach(q => {
+                    area.innerHTML += `
+                        <button class="btn quiz-btn" onclick="checkAndGo('${q.file}', '${q.title}')">
+                            <i class="fas fa-book-open"></i> ${q.title}
+                        </button>`;
+                });
             } else {
-                area.innerHTML = "<p style='color: #888;'>বর্তমানে কোনো পরীক্ষা নেই।</p>";
+                area.innerHTML = "<p style='color: #888;'>বর্তমানে কোনো কুইজ নেই।</p>";
             }
         });
     }
 
     function checkAndGo(fileName, quizTitle) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
-        const loader = document.getElementById('check-msg');
-        loader.style.display = "block";
-
-        // ডাবল সাবমিশন চেক
-        db.ref('QuizResults')
-          .orderByChild('userId')
-          .equalTo(user.id)
-          .once('value', (snap) => {
-              loader.style.display = "none";
-              let alreadyDone = false;
-              const data = snap.val();
-              if(data) {
-                  Object.values(data).forEach(res => {
-                      if(res.quizTitle === quizTitle) alreadyDone = true;
-                  });
-              }
-
-              if(alreadyDone) {
-                  alert("আপনি ইতিমধ্যে এই পরীক্ষাটি জমা দিয়েছেন!");
-              } else {
-                  goToExam(fileName);
-              }
-          });
+        document.getElementById('check-msg').style.display = "block";
+        
+        db.ref('QuizResults').orderByChild('userId').equalTo(user.id).once('value', (snap) => {
+            document.getElementById('check-msg').style.display = "none";
+            let done = false;
+            if(snap.val()) {
+                Object.values(snap.val()).forEach(res => {
+                    if(res.quizTitle === quizTitle) done = true;
+                });
+            }
+            if(done) alert("আপনি ইতিমধ্যে এটি দিয়েছেন!");
+            else goToExam(fileName);
+        });
     }
 
     function goToExam(fileName) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
-        
-        // মাস্টার কুইজের জন্য প্রয়োজনীয় প্যারামিটার সেটআপ
         const params = new URLSearchParams({
-            id: user.id,              // টাইমার সিঙ্কের জন্য ইউনিক আইডি
-            name: user.name,
-            roll: user.roll,
-            cls: user.cls,
-            sec: user.section         // সেকশন পাস করা হচ্ছে
+            id: user.id, name: user.name, roll: user.roll, cls: user.cls, sec: user.section
         }).toString();
-
         window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html?${params}`;
     }
 
-    function logout() {
-        if(confirm("আপনি কি লগআউট করতে চান?")) {
-            localStorage.removeItem('loggedUser');
-            location.reload();
-        }
-    }
-
-    window.onload = () => {
-        if(localStorage.getItem('loggedUser')) {
-            showHome();
-        }
-    }
+    function logout() { localStorage.removeItem('loggedUser'); location.reload(); }
+    window.onload = () => { if(localStorage.getItem('loggedUser')) showHome(); }
 </script>
 </body>
 </html>
