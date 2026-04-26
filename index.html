@@ -47,6 +47,7 @@
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
     function handleLogin() {
         const id = document.getElementById('loginId').value.trim();
         const pin = document.getElementById('loginPin').value.trim();
@@ -59,13 +60,14 @@
             } else { alert("আইডি বা পিন ভুল!"); }
         });
     }
+
     function showHome() {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         if(!user) return;
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('home-screen').style.display = 'block';
         document.getElementById('uName').innerText = "স্বাগতম, " + user.name;
-        document.getElementById('uInfo').innerHTML = `<b>আইডি:</b> ${user.id} | <b>রোল:</b> ${user.roll}`;
+        document.getElementById('uInfo').innerHTML = `<b>আইডি:</b> ${user.id} | <b>রোল:</b> ${user.roll || 'N/A'}`;
         db.ref('IndividualQuizzes/' + user.id).on('value', (snap) => {
             const area = document.getElementById('quiz-list-area');
             const data = snap.val();
@@ -82,6 +84,7 @@
             }
         });
     }
+
     function checkAndGo(fileName, quizTitle) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         document.getElementById('check-msg').style.display = "block";
@@ -93,21 +96,23 @@
                     if(res.quizTitle === quizTitle) done = true;
                 });
             }
-            if(done) alert("আপনি ইতিমধ্যে এটি দিয়েছেন!");
+            if(done) alert("আপনি ইতিমধ্যে এটি দিয়েছেন!");
             else goToExam(fileName);
         });
     }
+
     function goToExam(fileName) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         const params = new URLSearchParams({
             id: user.id, 
             name: user.name, 
-            roll: user.roll, 
-            cls: user.class || user.cls, // আপনার ডাটাবেসে যে নাম থাকে
-            sec: user.section || user.sec
+            roll: user.roll || "N/A", 
+            cls: user.class || user.cls || "N/A", 
+            sec: user.section || user.sec || "N/A"
         }).toString();
         window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html?${params}`;
     }
+
     function logout() { localStorage.removeItem('loggedUser'); location.reload(); }
     window.onload = () => { if(localStorage.getItem('loggedUser')) showHome(); }
 </script>
