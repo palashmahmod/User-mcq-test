@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student App - index</title>
+    <title>Student App - Home</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -22,6 +22,7 @@
     </style>
 </head>
 <body>
+
 <div id="login-screen" class="card">
     <i class="fas fa-user-graduate" style="font-size: 40px; color: #3498db; margin-bottom: 15px;"></i>
     <h2>শিক্ষার্থী লগইন</h2>
@@ -29,6 +30,7 @@
     <input type="number" id="loginPin" placeholder="পিন নম্বর">
     <button class="btn" onclick="handleLogin()">লগইন করুন</button>
 </div>
+
 <div id="home-screen" class="card">
     <h3 id="uName">স্বাগতম!</h3>
     <div class="u-info-text"><p id="uInfo"></p></div>
@@ -39,6 +41,7 @@
     <p id="check-msg" class="loader-text"><i class="fas fa-spinner fa-spin"></i> যাচাই হচ্ছে...</p>
     <button class="btn" style="background:#e74c3c; margin-top:30px;" onclick="logout()">লগআউট</button>
 </div>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco",
@@ -51,6 +54,8 @@
     function handleLogin() {
         const id = document.getElementById('loginId').value.trim();
         const pin = document.getElementById('loginPin').value.trim();
+        if(!id || !pin) return alert("আইডি ও পিন দিন");
+
         db.ref('users/' + id).once('value', (snap) => {
             const user = snap.val();
             if(user && user.password == pin) {
@@ -68,12 +73,14 @@
         document.getElementById('home-screen').style.display = 'block';
         document.getElementById('uName').innerText = "স্বাগতম, " + user.name;
         document.getElementById('uInfo').innerHTML = `<b>আইডি:</b> ${user.id} | <b>রোল:</b> ${user.roll || 'N/A'}`;
+
         db.ref('IndividualQuizzes/' + user.id).on('value', (snap) => {
             const area = document.getElementById('quiz-list-area');
             const data = snap.val();
             area.innerHTML = "";
             if(data) {
-                Object.values(data).forEach(q => {
+                Object.keys(data).forEach(key => {
+                    const q = data[key];
                     area.innerHTML += `
                         <button class="btn quiz-btn" onclick="checkAndGo('${q.file}', '${q.title}')">
                             <i class="fas fa-book-open"></i> ${q.title}
@@ -88,6 +95,7 @@
     function checkAndGo(fileName, quizTitle) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         document.getElementById('check-msg').style.display = "block";
+
         db.ref('QuizResults').orderByChild('userId').equalTo(user.id).once('value', (snap) => {
             document.getElementById('check-msg').style.display = "none";
             let done = false;
@@ -96,7 +104,7 @@
                     if(res.quizTitle === quizTitle) done = true;
                 });
             }
-            if(done) alert("আপনি ইতিমধ্যে এটি দিয়েছেন!");
+            if(done) alert("আপনি ইতিমধ্যে এই পরীক্ষাটি দিয়েছেন!");
             else goToExam(fileName);
         });
     }
