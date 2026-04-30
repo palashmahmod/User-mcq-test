@@ -34,7 +34,6 @@
             position: relative;
         }
 
-        /* হেডার স্টাইল (এডমিন অ্যাপ থেকে নেওয়া) */
         .header-profile {
             display: flex;
             align-items: flex-end;
@@ -45,7 +44,7 @@
 
         .profile-pic {
             width: 80px;
-            height: 106px; /* 3:4 ratio */
+            height: 106px;
             border: 1px solid #000;
             object-fit: cover;
             border-radius: 4px;
@@ -78,10 +77,8 @@
             border: none;
         }
 
-        /* মেইন কন্টেন্ট */
         .main-content { padding: 0 25px 25px 25px; text-align: center; }
         
-        /* ইউজার ইনফো কার্ড ডিজাইন */
         .user-details-card {
             background: linear-gradient(to right, #1e3c72, #2a5298);
             border-radius: 25px;
@@ -248,6 +245,7 @@
         });
     }
 
+    // সংশোধিত ফাংশন ( .html যুক্ত করা হয়েছে )
     function goToExam(fileName) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         const params = new URLSearchParams({
@@ -257,16 +255,17 @@
             cls: user.class || user.cls || "N/A", 
             sec: user.section || user.sec || "N/A"
         }).toString();
+        // নিচের লাইনে fileName এর পর .html যোগ করা হয়েছে
         window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html?${params}`;
     }
 
     function protectedLogout() {
-        const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
+        const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
         if (pass === "pm5522") {
             localStorage.removeItem('loggedUser');
             location.reload();
         } else if (pass !== null) {
-            alert("ভুল পাসওয়ার্ড!");
+            alert("ভুল পাসওয়ার্ড!");
         }
     }
 
