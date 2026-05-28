@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আমার ফলাফল তালিকা</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --p: #2c3e50; --bg: #f0f2f5; --danger: #e74c3c; --success: #27ae60; --card-bg: #ffffff; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        
+        .header-nav { display: flex; align-items: center; justify-content: space-between; max-width: 600px; margin: 0 auto 20px; }
+        .back-btn { background: #e8eaed; color: #333; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 8px; border: 1px solid #666; cursor: pointer; }
+        
+        .search-container { max-width: 600px; margin: 0 auto 20px; }
+        #searchBox { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #666; box-sizing: border-box; outline: none; font-size: 12px; }
+        
+        .result-list { max-width: 600px; margin: 0 auto; }
+        .result-card { background: var(--card-bg); border-radius: 15px; border: 1px solid #666; padding: 10px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; border-left: 5px solid var(--p); }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1px; }
+        .student-info h3 { margin: 0; color: #333; font-size: 1rem; }
+        .student-id { color: #666; font-size: 4px; font-weight: normal; }
+        
+        .info-row { display: flex; align-items: center; gap: 12px; margin: 1px 0; color: #444; font-size: 0.4px; }
+        .info-row i { width: 18px; color: #555; }
+        
+        .badge-container { display: flex; flex-direction: column; gap: 2px; margin-top: 1px; }
+        .badge { padding: 2px 5px; border-radius: 8px; font-size: 0.4px; font-weight: bold; display: inline-block; }
+        .badge-success { background: #e8f5e9; color: var(--success); }
+        .badge-error { background: #ffebee; color: var(--danger); width: 100%; box-sizing: border-box; }
+        .loader { text-align: center; margin-top: 50px; font-size: 20px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="header-nav">
+    <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i> ব্যাক</a>
+    <h2 style="margin:0; flex-grow: 1; text-align: center;">আমার ফলাফল</h2>
+    <div style="width: 80px;"></div> </div>
+
+<div class="search-container">
+    <input type="text" id="searchBox" placeholder="বিষয় বা কুইজের নাম দিয়ে খুঁজুন..." onkeyup="filterResults()">
+</div>
+
+<div id="loading" class="loader"><i class="fas fa-spinner fa-spin"></i> লোড হচ্ছে...</div>
+<div id="resultArea" class="result-list"></div>
+
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco", 
+        databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/", 
+        projectId: "quiz-storage-d8707" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ২ নম্বর শর্তানুযায়ী ইউজারের সংরক্ষিত লগইন আইডি সেশন বা লোকাল স্টোরেজ থেকে সংগ্রহ করা হচ্ছে
+    // আপনার লগইন সিস্টেমে আইডির কী (Key) নাম যদি 'studentId' বা অন্য কিছু হয়, তবে নিচের 'userId' লেখাটি পরিবর্তন করে নেবেন।
+    const currentLoggedInUser = localStorage.getItem('userId') || ""; 
+
+    function loadResults() {
+        db.ref("QuizResults").on("value", (snapshot) => {
+            document.getElementById('loading').style.display = 'none';
+            const area = document.getElementById('resultArea');
+            area.innerHTML = "";
+            
+            if (!snapshot.exists()) {
+                area.innerHTML = "<p style='text-align:center;'>কোনো ফলাফল পাওয়া যায়নি।</p>";
+                return;
+            }
+
+            const resultsArray = [];
+            snapshot.forEach((child) => {
+                const data = child.val();
+                
+                // ২ নম্বর শর্ত: শুধুমাত্র বর্তমান লগইন করা ইউজারের আইডির সাথে ডাটাবেজের আইডি মিললে তবেই অ্যারেতে পুশ হবে
+                if (currentLoggedInUser !== "" && data.userId === currentLoggedInUser) {
+                    resultsArray.push({ key: child.key, data: data });
+                }
+            });
+
+            if (resultsArray.length === 0) {
+                area.innerHTML = "<p style='text-align:center;'>আপনার কোনো ফলাফলের তথ্য পাওয়া যায়নি।</p>";
+                return;
+            }
+
+            // ৫ নম্বর শর্তানুযায়ী সর্বশেষ ফলাফলটি সবার উপরে দেখানোর ক্রম সচল রাখা হলো
+            resultsArray.reverse().forEach((item) => {
+                const data = item.data;
+                const key = item.key;
+                
+                // ১ নম্বর শর্ত: data-search এ শুধু কুইজের নাম এবং বিষয়ের নাম রাখা হয়েছে (সার্চ ফিল্টারের জন্য)
+                const card = `
+                <div class="result-card" data-search="${data.quizTitle} ${data.subject || ''}">
+                    <div class="card-header">
+                        <div class="student-info">
+                            <h3>${data.name} <span class="student-id">(ID: ${data.userId || 'N/A'})</span></h3>
+                        </div>
+                        </div>
+                    
+                    <div class="info-row"><i class="fas fa-book"></i> <b>কুইজ:</b> ${data.quizTitle} | <b>বিষয়:</b> ${data.subject || 'N/A'}</div>
+                    <div class="info-row"><i class="fas fa-graduation-cap"></i> <b>শ্রেণি:</b> ${data.class || 'N/A'} | <b>শাখা:</b> ${data.section || 'N/A'} | <b>রোল:</b> ${data.roll || 'N/A'}</div>
+                    <div class="info-row"><i class="fas fa-clock"></i> <b>সময়:</b> ${data.date || ''}, ${data.time || ''}, (${data.timeSpent || '0m 0s'})</div>
+                    
+                    <div class="badge-container">
+                        <div><span class="badge badge-success">সঠিক: ${data.correct} / ${data.total}</span></div>
+                        <div class="badge badge-error">ভুল প্রশ্ন নং: ${data.wrongQuestions || 'সব সঠিক'}</div>
+                    </div>
+                </div>
+                `;
+                area.innerHTML += card;
+            });
+        });
+    }
+
+    function filterResults() {
+        const query = document.getElementById('searchBox').value.toLowerCase();
+        const cards = document.querySelectorAll('.result-card');
+        
+        cards.forEach(card => {
+            const text = card.getAttribute('data-search').toLowerCase();
+            card.style.display = text.includes(query) ? "block" : "none";
+        });
+    }
+
+    loadResults();
+</script>
+</body>
+</html>
