@@ -13,7 +13,6 @@
             --accent-color: #3498db;
             --white: #ffffff;
         }
-
         body { 
             font-family: 'Segoe UI', Tahoma, sans-serif; 
             background: linear-gradient(135deg, #e0eafc, #cfdef3); 
@@ -23,7 +22,6 @@
             align-items: center; 
             min-height: 100vh; 
         }
-
         .card { 
             background: white; 
             border-radius: 20px; 
@@ -33,7 +31,6 @@
             overflow: hidden;
             position: relative;
         }
-
         .header-profile {
             display: flex;
             align-items: flex-end;
@@ -41,7 +38,6 @@
             padding: 20px 20px 5px 20px;
             background: #fff;
         }
-
         .profile-pic {
             width: 80px;
             height: 106px;
@@ -49,34 +45,29 @@
             object-fit: cover;
             border-radius: 4px;
         }
-
         .profile-info {
             color: var(--primary-color);
             line-height: 1.4;
             text-align: left;
         }
-
         .profile-info h2 {
             margin: 0;
             font-size: 20px;
             font-weight: 900;
             color: #1a202c;
         }
-
         .profile-info p {
             margin: 1px 0;
             font-size: 13px;
             font-weight: 600;
             color: #4a5568;
         }
-
         .divider {
             height: 1.5px;
             background-color: #000;
             margin: 10px 20px 20px 20px;
             border: none;
         }
-
         .main-content { padding: 0 25px 25px 25px; text-align: center; }
         
         .user-details-card {
@@ -87,31 +78,26 @@
             text-align: left;
             margin-bottom: 20px;
         }
-
         .user-details-card h2 {
             margin: 0 0 15px 0;
             font-size: 22px;
             border-bottom: 1px solid rgba(255,255,255,0.2);
             padding-bottom: 8px;
         }
-
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
-
         .info-item label {
             display: block;
             font-size: 13px;
             opacity: 0.8;
         }
-
         .info-item span {
             font-size: 16px;
             font-weight: bold;
         }
-
         input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
         .btn { width: 100%; padding: 14px; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px; }
         .btn:active { transform: scale(0.98); }
@@ -121,6 +107,17 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.01); } 100% { transform: scale(1); } }
         
         .loader-text { color: #f39c12; font-weight: bold; display: none; margin-top: 10px; text-align: center; }
+        
+        /* ফলাফল বিবরণী তালিকার জন্য স্টাইল */
+        .result-list-btn {
+            background: #9b59b6;
+            margin-bottom: 15px;
+            width: 100%;
+            display: block;
+            text-decoration: none;
+            box-sizing: border-box;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -155,7 +152,6 @@
         </div>
     </div>
     <hr class="divider">
-
     <div class="main-content">
         <div class="user-details-card">
             <h2 id="uNameDisplay">নাম লোড হচ্ছে...</h2>
@@ -166,6 +162,10 @@
                 <div class="info-item"><label>রোল</label><span id="uRollDisplay">----</span></div>
             </div>
         </div>
+
+        <a href="file_A.html" class="btn result-list-btn">
+            <i class="fas fa-poll-h"></i> ফলাফল বিবরণী তালিকা
+        </a>
 
         <div id="quiz-list-area"><p style="color: #888;">লোড হচ্ছে...</p></div>
         <p id="check-msg" class="loader-text"><i class="fas fa-spinner fa-spin"></i> যাচাই হচ্ছে...</p>
@@ -179,7 +179,6 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
-
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
@@ -187,12 +186,13 @@
         const id = document.getElementById('loginId').value.trim();
         const pin = document.getElementById('loginPin').value.trim();
         if(!id || !pin) return alert("আইডি ও পিন দিন");
-
         db.ref('users/' + id).once('value', (snap) => {
             const user = snap.val();
             if(user && user.password == pin) {
                 user.id = id;
                 localStorage.setItem('loggedUser', JSON.stringify(user));
+                // file_A.html এর ২ নম্বর শর্ত মেলানোর জন্য আলাদাভাবেuserId সেট করে রাখা হলো
+                localStorage.setItem('userId', id); 
                 showHome();
             } else { alert("আইডি বা পিন ভুল!"); }
         });
@@ -201,16 +201,14 @@
     function showHome() {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         if(!user) return;
-
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('home-screen').style.display = 'block';
-
         document.getElementById('uNameDisplay').innerText = user.name;
         document.getElementById('uIdDisplay').innerText = user.id;
         document.getElementById('uClassDisplay').innerText = user.class || user.cls || "N/A";
         document.getElementById('uSecDisplay').innerText = user.section || user.sec || "N/A";
         document.getElementById('uRollDisplay').innerText = user.roll || "N/A";
-
+        
         db.ref('IndividualQuizzes/' + user.id).on('value', (snap) => {
             const area = document.getElementById('quiz-list-area');
             const data = snap.val();
@@ -245,7 +243,6 @@
         });
     }
 
-    // সংশোধিত ফাংশন ( .html যুক্ত করা হয়েছে )
     function goToExam(fileName) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         const params = new URLSearchParams({
@@ -255,7 +252,6 @@
             cls: user.class || user.cls || "N/A", 
             sec: user.section || user.sec || "N/A"
         }).toString();
-        // নিচের লাইনে fileName এর পর .html যোগ করা হয়েছে
         window.location.href = `https://palashmahmod.github.io/quiz-files/${fileName}.html?${params}`;
     }
 
@@ -263,6 +259,7 @@
         const pass = prompt("লগআউট করতে পাসওয়ার্ড দিন:");
         if (pass === "pm5522") {
             localStorage.removeItem('loggedUser');
+            localStorage.removeItem('userId');
             location.reload();
         } else if (pass !== null) {
             alert("ভুল পাসওয়ার্ড!");
