@@ -15,20 +15,20 @@
         .back-btn { background: #e8eaed; color: #333; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 8px; border: 1px solid #666; cursor: pointer; }
         
         .search-container { max-width: 600px; margin: 0 auto 20px; }
-        #searchBox { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #666; box-sizing: border-box; outline: none; font-size: 12px; }
+        #searchBox { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #666; box-sizing: border-box; outline: none; font-size: 14px; }
         
         .result-list { max-width: 600px; margin: 0 auto; }
-        .result-card { background: var(--card-bg); border-radius: 15px; border: 1px solid #666; padding: 10px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; border-left: 5px solid var(--p); }
+        .result-card { background: var(--card-bg); border-radius: 15px; border: 1px solid #666; padding: 15px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; border-left: 5px solid var(--p); }
         
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1px; }
-        .student-info h3 { margin: 0; color: #333; font-size: 1rem; }
-        .student-id { color: #666; font-size: 4px; font-weight: normal; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .student-info h3 { margin: 0; color: #333; font-size: 1.1rem; }
+        .student-id { color: #666; font-size: 14px; font-weight: normal; }
         
-        .info-row { display: flex; align-items: center; gap: 12px; margin: 1px 0; color: #444; font-size: 0.4px; }
+        .info-row { display: flex; align-items: center; gap: 12px; margin: 6px 0; color: #444; font-size: 14px; line-height: 1.4; }
         .info-row i { width: 18px; color: #555; }
         
-        .badge-container { display: flex; flex-direction: column; gap: 2px; margin-top: 1px; }
-        .badge { padding: 2px 5px; border-radius: 8px; font-size: 0.4px; font-weight: bold; display: inline-block; }
+        .badge-container { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+        .badge { padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; display: inline-block; }
         .badge-success { background: #e8f5e9; color: var(--success); }
         .badge-error { background: #ffebee; color: var(--danger); width: 100%; box-sizing: border-box; }
         .loader { text-align: center; margin-top: 50px; font-size: 20px; color: #666; }
@@ -38,8 +38,9 @@
 
 <div class="header-nav">
     <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i> ব্যাক</a>
-    <h2 style="margin:0; flex-grow: 1; text-align: center;">আমার ফলাফল</h2>
-    <div style="width: 80px;"></div> </div>
+    <h2 style="margin:0; flex-grow: 1; text-align: center; font-size: 22px;">আমার ফলাফল</h2>
+    <div style="width: 80px;"></div> 
+</div>
 
 <div class="search-container">
     <input type="text" id="searchBox" placeholder="বিষয় বা কুইজের নাম দিয়ে খুঁজুন..." onkeyup="filterResults()">
@@ -56,10 +57,23 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
-    // ২ নম্বর শর্তানুযায়ী ইউজারের সংরক্ষিত লগইন আইডি সেশন বা লোকাল স্টোরেজ থেকে সংগ্রহ করা হচ্ছে
-    // আপনার লগইন সিস্টেমে আইডির কী (Key) নাম যদি 'studentId' বা অন্য কিছু হয়, তবে নিচের 'userId' লেখাটি পরিবর্তন করে নেবেন।
+    
     const currentLoggedInUser = localStorage.getItem('userId') || ""; 
+
+    // ইংরেজি সংখ্যাকে বাংলায় কনভার্ট করার ফাংশন
+    function getBengaliRank(rank) {
+        const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+        let rankStr = rank.toString().split('').map(digit => bengaliDigits[digit] || digit).join('');
+        
+        if (rank === 1) return rankStr + "ম";
+        if (rank === 2) return rankStr + "য়";
+        if (rank === 3) return rankStr + "য়";
+        if (rank === 4) return rankStr + "র্থ";
+        if (rank === 5) return rankStr + "ম";
+        if (rank === 6) return rankStr + "ষ্ঠ";
+        if (rank === 7 || rank === 8 || rank === 9 || rank === 10) return rankStr + "ম";
+        return rankStr + "তম";
+    }
 
     function loadResults() {
         db.ref("QuizResults").on("value", (snapshot) => {
@@ -72,41 +86,96 @@
                 return;
             }
 
-            const resultsArray = [];
+            const allResults = [];
             snapshot.forEach((child) => {
-                const data = child.val();
-                
-                // ২ নম্বর শর্ত: শুধুমাত্র বর্তমান লগইন করা ইউজারের আইডির সাথে ডাটাবেজের আইডি মিললে তবেই অ্যারেতে পুশ হবে
-                if (currentLoggedInUser !== "" && data.userId === currentLoggedInUser) {
-                    resultsArray.push({ key: child.key, data: data });
-                }
+                allResults.push({ key: child.key, data: child.val() });
             });
 
-            if (resultsArray.length === 0) {
-                area.innerHTML = "<p style='text-align:center;'>আপনার কোনো ফলাফলের তথ্য পাওয়া যায়নি।</p>";
+            function timeToSeconds(timeStr) {
+                if (!timeStr) return 999999;
+                const matches = timeStr.match(/(\d+)m\s*(\d+)s/);
+                if (matches) {
+                    return (parseInt(matches[1], 10) * 60) + parseInt(matches[2], 10);
+                }
+                const secMatch = timeStr.match(/(\d+)s/);
+                if (secMatch) return parseInt(secMatch[1], 10);
+                return 999999;
+            }
+
+            // শ্রেণি এবং কুইজ অনুযায়ী গ্রুপ তৈরি
+            const groups = {};
+            allResults.forEach(item => {
+                const className = item.data.class || 'N/A';
+                const quizName = item.data.quizTitle || 'N/A';
+                const groupKey = `${className}_${quizName}`;
+
+                if (!groups[groupKey]) {
+                    groups[groupKey] = [];
+                }
+                groups[groupKey].push(item);
+            });
+
+            // প্রতিটি গ্রুপের সর্টিং ও গ্লোবাল মেধাক্রম ম্যাপ তৈরি
+            const rankedResultsMap = {};
+            Object.keys(groups).forEach(groupKey => {
+                const currentGroup = groups[groupKey];
+                const totalParticipants = currentGroup.length; // মোট কতজন অংশ নিয়েছে তা বের করা হলো
+
+                currentGroup.sort((a, b) => {
+                    const correctA = parseInt(a.data.correct || 0, 10);
+                    const correctB = parseInt(b.data.correct || 0, 10);
+                    
+                    if (correctB !== correctA) {
+                        return correctB - correctA;
+                    } else {
+                        return timeToSeconds(a.data.timeSpent) - timeToSeconds(b.data.timeSpent);
+                    }
+                });
+
+                // কার মেধা স্থান কত এবং ঐ গ্রুপে মোট কতজন তা ম্যাপে স্টোর করা
+                currentGroup.forEach((item, index) => {
+                    rankedResultsMap[item.key] = {
+                        rank: index + 1,
+                        totalCount: totalParticipants
+                    };
+                });
+            });
+
+            // শুধুমাত্র লগইন থাকা ইউজারের নিজস্ব কুইজ ডেটা ফিল্টার করা
+            const userResultsArray = allResults.filter(item => currentLoggedInUser !== "" && item.data.userId === currentLoggedInUser);
+
+            if (userResultsArray.length === 0) {
+                area.innerHTML = "<p style='text-align:center;'>আপনার কোনো ফলাফলের তথ্য পাওয়া যায়নি।</p>";
                 return;
             }
 
-            // ৫ নম্বর শর্তানুযায়ী সর্বশেষ ফলাফলটি সবার উপরে দেখানোর ক্রম সচল রাখা হলো
-            resultsArray.reverse().forEach((item) => {
+            userResultsArray.reverse().forEach((item) => {
                 const data = item.data;
                 const key = item.key;
+                const rankInfo = rankedResultsMap[key];
+                const bengaliRank = getBengaliRank(rankInfo.rank);
                 
-                // ১ নম্বর শর্ত: data-search এ শুধু কুইজের নাম এবং বিষয়ের নাম রাখা হয়েছে (সার্চ ফিল্টারের জন্য)
+                // ইংরেজি সংখ্যাকে বাংলায় কনভার্ট করার ইন্টারনাল লজিক (অংশগ্রহণকারীর জন্য)
+                const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+                let totalParticipantsBn = rankInfo.totalCount.toString().split('').map(digit => bengaliDigits[digit] || digit).join('');
+
                 const card = `
                 <div class="result-card" data-search="${data.quizTitle} ${data.subject || ''}">
                     <div class="card-header">
                         <div class="student-info">
                             <h3>${data.name} <span class="student-id">(ID: ${data.userId || 'N/A'})</span></h3>
                         </div>
-                        </div>
+                    </div>
                     
                     <div class="info-row"><i class="fas fa-book"></i> <b>কুইজ:</b> ${data.quizTitle} | <b>বিষয়:</b> ${data.subject || 'N/A'}</div>
                     <div class="info-row"><i class="fas fa-graduation-cap"></i> <b>শ্রেণি:</b> ${data.class || 'N/A'} | <b>শাখা:</b> ${data.section || 'N/A'} | <b>রোল:</b> ${data.roll || 'N/A'}</div>
-                    <div class="info-row"><i class="fas fa-clock"></i> <b>সময়:</b> ${data.date || ''}, ${data.time || ''}, (${data.timeSpent || '0m 0s'})</div>
+                    <div class="info-row"><i class="fas fa-clock"></i> <b>সময়:</b> ${data.date || ''}, ${data.time || ''}, (${data.timeSpent || '0m 0s'})</div>
                     
                     <div class="badge-container">
-                        <div><span class="badge badge-success">সঠিক: ${data.correct} / ${data.total}</span></div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="badge badge-success">সঠিক: ${data.correct} / ${data.total}</span>
+                            <span class="badge" style="background: #e3f2fd; color: #0d47a1;"><i class="fas fa-trophy"></i> মেধা স্থান: ${bengaliRank} (${totalParticipantsBn} জন)</span>
+                        </div>
                         <div class="badge badge-error">ভুল প্রশ্ন নং: ${data.wrongQuestions || 'সব সঠিক'}</div>
                     </div>
                 </div>
