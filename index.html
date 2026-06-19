@@ -118,10 +118,20 @@
             box-sizing: border-box;
             text-align: center;
         }
+
+        /* নতুন রিভিশন বাটনের বিশেষ স্টাইল */
+        .revision-btn {
+            background: #3498db;
+            margin-bottom: 12px;
+            width: 100%;
+            display: block;
+            text-decoration: none;
+            box-sizing: border-box;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-
 <div id="login-screen" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -163,6 +173,10 @@
             </div>
         </div>
 
+        <a href="file_B.html" class="btn revision-btn">
+            <i class="fas fa-book"></i> সকল প্রশ্ন রিভিশন
+        </a>
+
         <a href="file_A.html" class="btn result-list-btn">
             <i class="fas fa-poll-h"></i> ফলাফল বিবরণী তালিকা
         </a>
@@ -191,7 +205,6 @@
             if(user && user.password == pin) {
                 user.id = id;
                 localStorage.setItem('loggedUser', JSON.stringify(user));
-                // file_A.html এর ২ নম্বর শর্ত মেলানোর জন্য আলাদাভাবেuserId সেট করে রাখা হলো
                 localStorage.setItem('userId', id); 
                 showHome();
             } else { alert("আইডি বা পিন ভুল!"); }
@@ -243,6 +256,8 @@
         });
     }
 
+    document.write(""); // Avoid unnecessary output stream issues
+
     function goToExam(fileName) {
         const user = JSON.parse(localStorage.getItem('loggedUser'));
         const params = new URLSearchParams({
@@ -265,7 +280,6 @@
             alert("ভুল পাসওয়ার্ড!");
         }
     }
-
     window.onload = () => { if(localStorage.getItem('loggedUser')) showHome(); }
 </script>
 </body>
