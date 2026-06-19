@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student App - Study Materials</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --white: #ffffff;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: linear-gradient(135deg, #e0eafc, #cfdef3); 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .card { 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+            width: 100%; 
+            max-width: 400px; 
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: var(--primary-color);
+            color: white;
+        }
+        .header h2 { margin: 0; font-size: 18px; font-weight: bold; }
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .back-btn:active { transform: scale(0.95); }
+        .main-content { padding: 20px; text-align: center; }
+        .study-btn { 
+            width: 100%; 
+            padding: 14px; 
+            background: var(--accent-color); 
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            font-size: 15px; 
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-sizing: border-box;
+            text-align: left;
+        }
+        .study-btn:active { transform: scale(0.98); }
+        .no-data { color: #888; font-style: italic; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i> ব্যাক</a>
+        <h2>পঠন সামগ্রী তালিকা</h2>
+        <div style="width: 55px;"></div>
+    </div>
+
+    <div class="main-content">
+        <div id="study-list-area">
+            <p style="color: #888;"><i class="fas fa-spinner fa-spin"></i> মেটেরিয়াল লোড হচ্ছে...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBmCTx0ytWLW6YPeAbUHGEixFOehynuEco",
+        databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
+        projectId: "quiz-storage-d8707"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function loadStudyMaterials() {
+        const user = JSON.parse(localStorage.getItem('loggedUser'));
+        
+        if(!user || !user.id) {
+            document.getElementById('study-list-area').innerHTML = 
+                "<p class='no-data' style='color:red;'>অনুগ্রহ করে প্রথমে লগইন করুন!</p>";
+            return;
+        }
+
+        db.ref('IndividualStudyMaterials/' + user.id).on('value', (snap) => {
+            const area = document.getElementById('study-list-area');
+            const data = snap.val();
+            area.innerHTML = "";
+
+            if(data) {
+                // অবজেক্ট ডাটাকে অ্যারে-তে রূপান্তর করা
+                var materialsList = [];
+                Object.keys(data).forEach(function(key) {
+                    materialsList.push(data[key]);
+                });
+
+                // শিরোনাম (Title) অনুযায়ী বর্ণানুক্রমিকভাবে (Alphabetically) সাজানো
+                // এর ফলে "বিজ্ঞান..." লেখা ফাইলগুলো একসাথে এবং "গণিত..." লেখা ফাইলগুলো একসাথে পাশাপাশি চলে আসবে
+                materialsList.sort(function(a, b) {
+                    var titleA = (a.title || "").toLowerCase();
+                    var titleB = (b.title || "").toLowerCase();
+                    if (titleA < titleB) return -1;
+                    if (titleA > titleB) return 1;
+                    return 0;
+                });
+
+                // সাজানো তালিকাটি স্ক্রিনে রেন্ডার করা
+                materialsList.forEach(function(material) {
+                    area.innerHTML += '<button class="study-btn" onclick="openMaterial(\'' + material.file + '\')">' +
+                        '<i class="fas fa-book-reader"></i> ' + material.title +
+                        '</button>';
+                });
+            } else {
+                area.innerHTML = "<p class='no-data'>বর্তমানে পড়ার জন্য কোনো ফাইল পাঠানো হয়নি।</p>";
+            }
+        });
+    }
+
+    function openMaterial(fileName) {
+        const targetUrl = 'https://palashmahmod.github.io/quiz-study-files/' + fileName + '.html';
+        window.location.href = targetUrl;
+    }
+
+    window.onload = loadStudyMaterials;
+</script>
+</body>
+</html>
