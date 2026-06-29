@@ -118,7 +118,6 @@
             box-sizing: border-box;
             text-align: center;
         }
-
         /* নতুন রিভিশন বাটনের বিশেষ স্টাইল */
         .revision-btn {
             background: #3498db;
@@ -132,6 +131,7 @@
     </style>
 </head>
 <body>
+
 <div id="login-screen" class="card">
     <div class="header-profile">
         <img src="photo1.jpg" alt="Palash Mahmod" class="profile-pic">
@@ -172,15 +172,12 @@
                 <div class="info-item"><label>রোল</label><span id="uRollDisplay">----</span></div>
             </div>
         </div>
-
         <a href="file_B.html" class="btn revision-btn">
             <i class="fas fa-book"></i> সকল প্রশ্ন রিভিশন
         </a>
-
         <a href="file_A.html" class="btn result-list-btn">
             <i class="fas fa-poll-h"></i> ফলাফল বিবরণী তালিকা
         </a>
-
         <div id="quiz-list-area"><p style="color: #888;">লোড হচ্ছে...</p></div>
         <p id="check-msg" class="loader-text"><i class="fas fa-spinner fa-spin"></i> যাচাই হচ্ছে...</p>
         <button class="btn" style="background:#e74c3c; margin-top:30px;" onclick="protectedLogout()">লগআউট</button>
@@ -193,6 +190,7 @@
         databaseURL: "https://quiz-storage-d8707-default-rtdb.firebaseio.com/",
         projectId: "quiz-storage-d8707"
     };
+
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
@@ -221,6 +219,16 @@
         document.getElementById('uClassDisplay').innerText = user.class || user.cls || "N/A";
         document.getElementById('uSecDisplay').innerText = user.section || user.sec || "N/A";
         document.getElementById('uRollDisplay').innerText = user.roll || "N/A";
+        
+        // >>> নতুন যুক্ত করা অংশ (রিয়েল-টাইম আইডি ডিলিট চেকার) <<<
+        db.ref('users/' + user.id).on('value', (snap) => {
+            if (!snap.exists()) {
+                localStorage.removeItem('loggedUser');
+                localStorage.removeItem('userId');
+                alert("আপনার আইডিটি নিষ্ক্রিয় বা ডিলিট করা হয়েছে!");
+                location.reload(); 
+            }
+        });
         
         db.ref('IndividualQuizzes/' + user.id).on('value', (snap) => {
             const area = document.getElementById('quiz-list-area');
@@ -280,6 +288,7 @@
             alert("ভুল পাসওয়ার্ড!");
         }
     }
+
     window.onload = () => { if(localStorage.getItem('loggedUser')) showHome(); }
 </script>
 </body>
